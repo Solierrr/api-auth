@@ -8,6 +8,7 @@ data class Person(
 
     var name: String,
 
+    
     var cpf: String,
 
     var phone: String,
