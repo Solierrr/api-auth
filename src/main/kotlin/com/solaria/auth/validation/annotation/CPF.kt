@@ -1,5 +1,10 @@
 package com.solaria.auth.validation.annotation
 
+import com.solaria.auth.validation.utils.CPFValidator
+import jakarta.validation.Constraint
+import jakarta.validation.Payload
+import kotlin.reflect.KClass
+
 @Target(
     AnnotationTarget.FIELD,
     AnnotationTarget.VALUE_PARAMETER,
