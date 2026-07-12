@@ -34,7 +34,7 @@ class JwtAuthenticationFilter(
 
     private fun authenticate(token: String, request: HttpServletRequest) {
         runCatching {
-            UUID.fromString(jwtService.extractUserId(token))
+            UUID.fromString(jwtService.extractAccessTokenUserId(token))
         }.getOrNull()?.let { userId ->
             userAccountRepository.findById(userId).orElse(null)?.let(AuthUser::from)?.let { user ->
                 UsernamePasswordAuthenticationToken(user, null, user.authorities).also { authentication ->
