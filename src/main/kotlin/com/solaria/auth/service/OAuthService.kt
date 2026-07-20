@@ -1,9 +1,16 @@
 package com.solaria.auth.service
 
-import com.solaria.auth.entity.OAuthAccount
+import com.solaria.auth.entity.FederatedIdentity
 import com.solaria.auth.entity.UserAccount
 
 interface OAuthService {
-    fun link(user: UserAccount, provider: String, providerUserId: String): OAuthAccount
-    fun findLinkedAccount(provider: String, providerUserId: String): OAuthAccount?
+    fun linkFirebaseIdentity(
+        user: UserAccount,
+        issuer: String,
+        subject: String,
+        email: String?,
+        emailVerified: Boolean
+    ): FederatedIdentity
+
+    fun findLinkedIdentity(issuer: String, subject: String): FederatedIdentity?
 }
