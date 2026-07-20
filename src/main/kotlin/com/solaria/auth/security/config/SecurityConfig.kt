@@ -17,6 +17,7 @@ import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration
+import jakarta.servlet.http.HttpServletResponse
 
 @Configuration
 @EnableWebSecurity
@@ -31,8 +32,27 @@ class SecurityConfig(
         .csrf { it.disable() }
         .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
         .authenticationProvider(authenticationProvider())
+        .exceptionHandling {
+            it.authenticationEntryPoint { _, response, _ ->
+                response.status = HttpServletResponse.SC_UNAUTHORIZED
+                response.contentType = "application/json"
+                response.writer.write("{\"status\":\"UNAUTHORIZED\",\"message\":\"Authentication is required\",\"errors\":null}")
+            }
+            it.accessDeniedHandler { _, response, _ ->
+                response.status = HttpServletResponse.SC_FORBIDDEN
+                response.contentType = "application/json"
+                response.writer.write("{\"status\":\"FORBIDDEN\",\"message\":\"Access is denied\",\"errors\":null}")
+            }
+        }
         .authorizeHttpRequests {
-            it.requestMatchers(HttpMethod.POST, "/auth/register", "/auth/login", "/auth/refresh").permitAll()
+            it.requestMatchers(
+                HttpMethod.POST,
+                "/auth/register",
+                "/auth/login",
+                "/auth/firebase",
+                "/auth/firebase/link",
+                "/auth/refresh"
+            ).permitAll()
             it.requestMatchers("/actuator/health").permitAll()
             it.anyRequest().authenticated()
         }
@@ -40,7 +60,7 @@ class SecurityConfig(
         .build()
 
     @Bean
-    fun passwordEncoder(): PasswordEncoder = BCryptPasswordEncoder()
+    fun passwordEncoder(): PasswordEncoder = BCryptPasswordEncoder(12)
 
     @Bean
     fun authenticationProvider(): DaoAuthenticationProvider = DaoAuthenticationProvider(accountUserDetailsService).apply {
