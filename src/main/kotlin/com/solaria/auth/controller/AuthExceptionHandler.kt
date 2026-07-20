@@ -10,13 +10,44 @@ import com.solaria.auth.service.FederatedIdentityConflictException
 import com.solaria.auth.service.FirebaseAccountLinkMismatchException
 import com.solaria.auth.service.InvalidAccountLinkCredentialsException
 import com.solaria.auth.service.VerifiedFirebaseEmailRequiredException
+import com.solaria.auth.service.EmailAlreadyRegisteredException
+import com.solaria.auth.service.InvalidRefreshTokenException
+import com.solaria.auth.service.RefreshTokenReuseException
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
+import org.springframework.security.core.AuthenticationException
+import org.springframework.web.bind.MethodArgumentNotValidException
 
 @RestControllerAdvice
 class AuthExceptionHandler {
+    @ExceptionHandler(AuthenticationException::class)
+    fun invalidCredentials(): ResponseEntity<ErrorResponse> =
+        error(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", "Email or password is invalid")
+
+    @ExceptionHandler(EmailAlreadyRegisteredException::class)
+    fun emailAlreadyRegistered(): ResponseEntity<ErrorResponse> =
+        error(HttpStatus.CONFLICT, "EMAIL_ALREADY_REGISTERED", "Email is already registered")
+
+    @ExceptionHandler(InvalidRefreshTokenException::class)
+    fun invalidRefreshToken(): ResponseEntity<ErrorResponse> =
+        error(HttpStatus.UNAUTHORIZED, "INVALID_REFRESH_TOKEN", "Refresh token is invalid")
+
+    @ExceptionHandler(RefreshTokenReuseException::class)
+    fun refreshTokenReuse(): ResponseEntity<ErrorResponse> =
+        error(HttpStatus.UNAUTHORIZED, "REFRESH_TOKEN_REUSED", "Refresh token reuse was detected")
+
+    @ExceptionHandler(MethodArgumentNotValidException::class)
+    fun validationError(exception: MethodArgumentNotValidException): ResponseEntity<ErrorResponse> =
+        ResponseEntity.badRequest().body(
+            ErrorResponse(
+                status = "VALIDATION_ERROR",
+                message = "Request validation failed",
+                errors = exception.bindingResult.fieldErrors.map { "${it.field}: ${it.defaultMessage}" }
+            )
+        )
+
     @ExceptionHandler(AccountLinkRequiredException::class)
     fun accountLinkRequired(exception: AccountLinkRequiredException): ResponseEntity<AccountLinkRequiredResponse> =
         ResponseEntity.status(HttpStatus.CONFLICT).body(AccountLinkRequiredResponse(email = exception.email))

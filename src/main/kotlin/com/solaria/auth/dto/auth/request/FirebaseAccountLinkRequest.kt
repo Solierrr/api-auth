@@ -18,5 +18,6 @@ data class FirebaseAccountLinkRequest(
     @field:Size(max = 10000)
     val idToken: String,
 
+    @field:Size(max = 255)
     val device: String? = null
 )
