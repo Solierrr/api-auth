@@ -32,7 +32,14 @@ class SecurityConfig(
         .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
         .authenticationProvider(authenticationProvider())
         .authorizeHttpRequests {
-            it.requestMatchers(HttpMethod.POST, "/auth/register", "/auth/login", "/auth/refresh").permitAll()
+            it.requestMatchers(
+                HttpMethod.POST,
+                "/auth/register",
+                "/auth/login",
+                "/auth/firebase",
+                "/auth/firebase/link",
+                "/auth/refresh"
+            ).permitAll()
             it.requestMatchers("/actuator/health").permitAll()
             it.anyRequest().authenticated()
         }
