@@ -3,6 +3,7 @@ package com.solaria.auth
 import com.solaria.auth.security.firebase.FirebaseTokenVerifier
 import com.solaria.auth.security.firebase.VerifiedFirebaseToken
 import com.solaria.auth.service.FirebaseAccountLinkMismatchException
+import com.solaria.auth.service.AuthenticationAttemptService
 import com.solaria.auth.service.VerifiedFirebaseEmailRequiredException
 import com.solaria.auth.service.impl.FederatedLoginTransaction
 import com.solaria.auth.service.impl.FirebaseAuthenticationServiceImpl
@@ -15,12 +16,14 @@ class FirebaseAuthenticationServiceImplTests {
     private lateinit var tokenVerifier: FirebaseTokenVerifier
     private lateinit var transaction: FederatedLoginTransaction
     private lateinit var service: FirebaseAuthenticationServiceImpl
+    private lateinit var authenticationAttemptService: AuthenticationAttemptService
 
     @BeforeEach
     fun setUp() {
         tokenVerifier = Mockito.mock(FirebaseTokenVerifier::class.java)
         transaction = Mockito.mock(FederatedLoginTransaction::class.java)
-        service = FirebaseAuthenticationServiceImpl(tokenVerifier, transaction)
+        authenticationAttemptService = Mockito.mock(AuthenticationAttemptService::class.java)
+        service = FirebaseAuthenticationServiceImpl(tokenVerifier, transaction, authenticationAttemptService)
     }
 
     @Test

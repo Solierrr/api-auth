@@ -16,12 +16,14 @@ import com.solaria.auth.service.AccountLinkRequiredException
 import com.solaria.auth.service.AccountUnavailableException
 import com.solaria.auth.service.AuthSession
 import com.solaria.auth.service.AuthSessionIssuer
+import com.solaria.auth.service.AuthenticationAttemptService
 import com.solaria.auth.service.FederatedIdentityConflictException
 import com.solaria.auth.service.FirebaseAccountLinkMismatchException
 import com.solaria.auth.service.FirebaseAuthenticationService
 import com.solaria.auth.service.InvalidAccountLinkCredentialsException
 import com.solaria.auth.service.VerifiedFirebaseEmailRequiredException
 import org.springframework.dao.DataIntegrityViolationException
+import org.hibernate.exception.ConstraintViolationException
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -30,13 +32,15 @@ import java.time.Instant
 @Service
 class FirebaseAuthenticationServiceImpl(
     private val tokenVerifier: FirebaseTokenVerifier,
-    private val federatedLoginTransaction: FederatedLoginTransaction
+    private val federatedLoginTransaction: FederatedLoginTransaction,
+    private val authenticationAttemptService: AuthenticationAttemptService
 ) : FirebaseAuthenticationService {
     override fun login(idToken: String, ip: String?, userAgent: String?, device: String?): AuthSession {
         val verifiedToken = tokenVerifier.verify(idToken)
         return try {
             federatedLoginTransaction.login(verifiedToken, ip, userAgent, device)
-        } catch (_: DataIntegrityViolationException) {
+        } catch (exception: DataIntegrityViolationException) {
+            if (!exception.isExpectedFederatedRace()) throw exception
             federatedLoginTransaction.login(verifiedToken, ip, userAgent, device)
         }
     }
@@ -57,7 +61,11 @@ class FirebaseAuthenticationServiceImpl(
         }
         return try {
             federatedLoginTransaction.link(verifiedToken, normalizedEmail, password, ip, userAgent, device)
-        } catch (_: DataIntegrityViolationException) {
+        } catch (exception: InvalidAccountLinkCredentialsException) {
+            authenticationAttemptService.recordFailure(normalizedEmail, ip, userAgent, "firebase_link")
+            throw exception
+        } catch (exception: DataIntegrityViolationException) {
+            if (!exception.isExpectedFederatedRace()) throw exception
             federatedLoginTransaction.link(verifiedToken, normalizedEmail, password, ip, userAgent, device)
         }
     }
@@ -65,6 +73,22 @@ class FirebaseAuthenticationServiceImpl(
     private fun VerifiedFirebaseToken.verifiedEmail(): String = email?.trim()?.lowercase()
         ?.takeIf { it.isNotBlank() && emailVerified }
         ?: throw VerifiedFirebaseEmailRequiredException()
+
+    private fun DataIntegrityViolationException.isExpectedFederatedRace(): Boolean {
+        val constraint = generateSequence<Throwable>(this) { it.cause }
+            .filterIsInstance<ConstraintViolationException>()
+            .firstOrNull()
+            ?.constraintName
+        return constraint in EXPECTED_RACE_CONSTRAINTS
+    }
+
+    private companion object {
+        val EXPECTED_RACE_CONSTRAINTS = setOf(
+            "uq_auth_user_primary_email",
+            "uq_federated_identity_subject",
+            "uq_federated_identity_user_issuer"
+        )
+    }
 }
 
 @Service
@@ -74,7 +98,8 @@ class FederatedLoginTransaction(
     private val outboxEventRepository: OutboxEventRepository,
     private val securityEventRepository: SecurityEventRepository,
     private val passwordEncoder: PasswordEncoder,
-    private val authSessionIssuer: AuthSessionIssuer
+    private val authSessionIssuer: AuthSessionIssuer,
+    private val authenticationAttemptService: AuthenticationAttemptService
 ) {
     @Transactional
     fun login(token: VerifiedFirebaseToken, ip: String?, userAgent: String?, device: String?): AuthSession {
@@ -92,6 +117,7 @@ class FederatedLoginTransaction(
         user.lastLoginAt = now
         user.updatedAt = now
         userAccountRepository.save(user)
+        authenticationAttemptService.recordSuccess(user, ip, userAgent, "firebase")
         return authSessionIssuer.issue(user, arrayOf("firebase"), ip, userAgent, device)
     }
 
@@ -126,6 +152,7 @@ class FederatedLoginTransaction(
         user.lastLoginAt = now
         user.updatedAt = now
         userAccountRepository.save(user)
+        authenticationAttemptService.recordSuccess(user, ip, userAgent, "firebase_link")
         return authSessionIssuer.issue(user, arrayOf("password", "firebase"), ip, userAgent, device)
     }
 

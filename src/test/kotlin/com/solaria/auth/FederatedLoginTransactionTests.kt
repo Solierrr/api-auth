@@ -14,6 +14,7 @@ import com.solaria.auth.security.firebase.VerifiedFirebaseToken
 import com.solaria.auth.service.AccountLinkRequiredException
 import com.solaria.auth.service.AuthSession
 import com.solaria.auth.service.AuthSessionIssuer
+import com.solaria.auth.service.AuthenticationAttemptService
 import com.solaria.auth.service.FederatedIdentityConflictException
 import com.solaria.auth.service.InvalidAccountLinkCredentialsException
 import com.solaria.auth.service.VerifiedFirebaseEmailRequiredException
@@ -38,6 +39,7 @@ class FederatedLoginTransactionTests {
     private lateinit var securityEventRepository: SecurityEventRepository
     private lateinit var passwordEncoder: PasswordEncoder
     private lateinit var sessionIssuer: AuthSessionIssuer
+    private lateinit var authenticationAttemptService: AuthenticationAttemptService
     private lateinit var transaction: FederatedLoginTransaction
 
     @BeforeEach
@@ -48,13 +50,15 @@ class FederatedLoginTransactionTests {
         securityEventRepository = Mockito.mock(SecurityEventRepository::class.java)
         passwordEncoder = Mockito.mock(PasswordEncoder::class.java)
         sessionIssuer = FakeSessionIssuer()
+        authenticationAttemptService = Mockito.mock(AuthenticationAttemptService::class.java)
         transaction = FederatedLoginTransaction(
             identityRepository,
             userRepository,
             outboxRepository,
             securityEventRepository,
             passwordEncoder,
-            sessionIssuer
+            sessionIssuer,
+            authenticationAttemptService
         )
     }
 
