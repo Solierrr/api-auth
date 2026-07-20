@@ -1,5 +1,6 @@
 package com.solaria.auth.validation.utils
 
+import com.solaria.auth.validation.annotation.CNPJ
 import jakarta.validation.ConstraintValidator
 import jakarta.validation.ConstraintValidatorContext
 
