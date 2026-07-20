@@ -18,3 +18,5 @@ interface AuthService {
     fun refresh(refreshToken: String, ip: String? = null, userAgent: String? = null, device: String? = null): AuthSession
     fun logout(userId: UUID)
 }
+
+class EmailAlreadyRegisteredException : RuntimeException("Email is already registered")

@@ -7,6 +7,7 @@ import com.solaria.auth.entity.UserAccount
 import com.solaria.auth.repository.UserAccountRepository
 import com.solaria.auth.repository.OutboxEventRepository
 import com.solaria.auth.service.UserService
+import com.solaria.auth.service.EmailAlreadyRegisteredException
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -23,7 +24,7 @@ class UserServiceImpl(
     override fun create(email: String, rawPassword: String): UserAccount {
         val normalizedEmail = email.trim().lowercase()
         require(normalizedEmail.isNotBlank()) { "Email must not be blank" }
-        check(!userAccountRepository.existsByPrimaryEmail(normalizedEmail)) { "Email is already registered" }
+        if (userAccountRepository.existsByPrimaryEmail(normalizedEmail)) throw EmailAlreadyRegisteredException()
         val user = UserAccount(primaryEmail = normalizedEmail)
         user.localCredential = LocalCredential(
             user = user,

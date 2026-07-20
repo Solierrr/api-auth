@@ -6,6 +6,7 @@ import com.solaria.auth.entity.UserAccount
 
 data class IssuedRefreshToken(val entity: RefreshToken, val value: String)
 class RefreshTokenReuseException : RuntimeException("Refresh token reuse detected")
+class InvalidRefreshTokenException : RuntimeException("Refresh token is invalid")
 
 interface RefreshTokenService {
     fun issue(session: Session): IssuedRefreshToken
