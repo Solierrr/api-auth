@@ -1,0 +1,27 @@
+info:
+  name: Conexão - T1
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=AIzaSyCcPxvXqepjYEXMBLHECYxGNVtR5Syex30
+  params:
+    - name: key
+      value: AIzaSyCcPxvXqepjYEXMBLHECYxGNVtR5Syex30
+      type: query
+  body:
+    type: json
+    data: |-
+      {
+        "email": "doasilva2009@hotmail.com",
+        "password": "batata123",
+        "returnSecureToken": true
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

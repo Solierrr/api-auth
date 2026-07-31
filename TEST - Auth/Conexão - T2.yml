@@ -1,0 +1,26 @@
+info:
+  name: Conexão - T2
+  type: http
+
+http:
+  method: POST
+  url: https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=AIzaSyCcPxvXqepjYEXMBLHECYxGNVtR5Syex30
+  params:
+    - name: key
+      value: AIzaSyCcPxvXqepjYEXMBLHECYxGNVtR5Syex30
+      type: query
+  body:
+    type: json
+    data: |-
+      {
+        "email" : "eduardoultimate29@gmail.com",
+        "password" : "girafa500",
+        "returnSecureToken": true
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
