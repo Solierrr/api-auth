@@ -1,6 +1,6 @@
 package com.solaria.auth.service.impl
 
-import com.solaria.auth.config.JwtProperties
+import com.solaria.auth.security.config.JwtProperties
 import com.solaria.auth.entity.Session
 import com.solaria.auth.entity.UserAccount
 import com.solaria.auth.repository.SessionRepository

@@ -1,6 +1,6 @@
 package com.solaria.auth.service.impl
 
-import com.solaria.auth.config.JwtProperties
+import com.solaria.auth.security.config.JwtProperties
 import com.solaria.auth.entity.RefreshToken
 import com.solaria.auth.entity.Session
 import com.solaria.auth.entity.UserAccount
