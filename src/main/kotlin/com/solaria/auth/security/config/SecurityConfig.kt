@@ -1,6 +1,7 @@
-package com.solaria.auth.config
+package com.solaria.auth.security.config
 
 import com.solaria.auth.security.AccountUserDetailsService
+
 import com.solaria.auth.security.JwtAuthenticationFilter
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
@@ -27,17 +28,26 @@ class SecurityConfig(
     private val jwtAuthenticationFilter: JwtAuthenticationFilter,
     private val accountUserDetailsService: AccountUserDetailsService
 ) {
+    /**
+     * Fábrica da única SecurityFilterChain deste serviço
+     */
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain = http
+        // CSRF desabilitado
         .csrf { it.disable() }
+        // Nunca cria/usa HttpSession
         .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
+        // Registra o provider de autenticação (login local email+senha) usado pelos fluxos de login.
         .authenticationProvider(authenticationProvider())
+        // Customiza o corpo das respostas 401/403 para um JSON
         .exceptionHandling {
+            // Sem autenticação válida -> responde 401 com um JSON
             it.authenticationEntryPoint { _, response, _ ->
                 response.status = HttpServletResponse.SC_UNAUTHORIZED
                 response.contentType = "application/json"
                 response.writer.write("{\"status\":\"UNAUTHORIZED\",\"message\":\"Authentication is required\",\"errors\":null}")
             }
+            // Autenticado, mas sem permissão para o recurso -> responde 403 com um JSON
             it.accessDeniedHandler { _, response, _ ->
                 response.status = HttpServletResponse.SC_FORBIDDEN
                 response.contentType = "application/json"
@@ -45,6 +55,7 @@ class SecurityConfig(
             }
         }
         .authorizeHttpRequests {
+            // Endpoints de emissão de credencial ficam públicos
             it.requestMatchers(
                 HttpMethod.POST,
                 "/auth/register",
@@ -53,10 +64,16 @@ class SecurityConfig(
                 "/auth/firebase/link",
                 "/auth/refresh"
             ).permitAll()
+            // Health check sem precisar de token.
             it.requestMatchers("/actuator/health").permitAll()
+            // Endpoint JWKS público
+            it.requestMatchers(HttpMethod.GET, "/.well-known/jwks.json").permitAll()
+            // o resto exige autenticação
             it.anyRequest().authenticated()
         }
+        // Posiciona o filtro de autenticação por JWT antes do filtro de referência de form login
         .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
+        // Constrói e devolve a SecurityFilterChain configurada acima como o bean deste método.
         .build()
 
     @Bean

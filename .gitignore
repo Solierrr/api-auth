@@ -65,3 +65,6 @@ replay_pid*
 
 # Local environment
 .env
+
+# JWT signing keystore (dev or otherwise) — never commit key material, including dev keys
+local-secrets/
