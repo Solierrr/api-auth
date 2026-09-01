@@ -1,8 +1,8 @@
-package com.solaria.auth.dto.persistence.response
+package com.solaria.auth.dto.core.response
 
 import java.util.UUID
 
-// Espelha InternalUserProvisionResponseDTO de api-persistence
+// Espelha InternalUserProvisionResponseDTO de api-core
 data class InternalUserProvisionResponse(
 
     // id interno do User em dbsolier
