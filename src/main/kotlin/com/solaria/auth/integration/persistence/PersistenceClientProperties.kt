@@ -10,9 +10,6 @@ data class PersistenceClientProperties(
     // URL de api-persistence
     val baseUrl: String,
 
-    // segredo compartilhado usado para mintar o token de serviço
-    val clientSecret: String,
-
     // timeout de conexão da chamada HTTP a api-persistence
     val connectTimeout: Duration,
 
