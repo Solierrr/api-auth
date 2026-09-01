@@ -1,4 +1,4 @@
-package com.solaria.auth.integration.persistence
+package com.solaria.auth.integration.core
 
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
@@ -10,13 +10,13 @@ import java.net.http.HttpClient
 // factory responsável por criar as chamadas http
 
 @Configuration
-// Liga PersistenceClientProperties como Bean
-@EnableConfigurationProperties(PersistenceClientProperties::class)
-class PersistenceClientConfig {
+// Liga CoreClientProperties como Bean
+@EnableConfigurationProperties(CoreClientProperties::class)
+class CoreClientConfig {
 
-    // Monta o RestClient usado para chamar api-persistence, com timeouts explícitos e URL base fixa
+    // Monta o RestClient usado para chamar api-core, com timeouts explícitos e URL base fixa
     @Bean
-    fun persistenceRestClient(properties: PersistenceClientProperties): RestClient {
+    fun coreRestClient(properties: CoreClientProperties): RestClient {
         // HttpClient JDK nativo, com o timeout de conexão vindo da config
         val httpClient = HttpClient.newBuilder()
             .connectTimeout(properties.connectTimeout)
@@ -25,7 +25,7 @@ class PersistenceClientConfig {
         val requestFactory = JdkClientHttpRequestFactory(httpClient)
         // timeout de leitura vindo da config, aplicado à factory
         requestFactory.setReadTimeout(properties.readTimeout)
-        // client final, com a URL base de api-persistence já fixada
+        // client final, com a URL base de api-core já fixada
         return RestClient.builder()
             .baseUrl(properties.baseUrl)
             .requestFactory(requestFactory)

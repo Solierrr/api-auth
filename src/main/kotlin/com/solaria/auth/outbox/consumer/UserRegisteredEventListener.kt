@@ -1,6 +1,6 @@
 package com.solaria.auth.outbox.consumer
 
-import com.solaria.auth.integration.persistence.PersistenceUserClient
+import com.solaria.auth.integration.core.CoreUserClient
 import com.solaria.auth.outbox.OutboxProperties
 import org.slf4j.LoggerFactory
 import org.springframework.data.redis.connection.stream.MapRecord
@@ -10,10 +10,10 @@ import org.springframework.stereotype.Component
 import tools.jackson.databind.ObjectMapper
 import java.util.UUID
 
-// Listener da fila de redis -> especifico para USER_REGISTERED -> faz request para api-persistence criar o user
+// Listener da fila de redis -> especifico para USER_REGISTERED -> faz request para api-core criar o user
 @Component
 class UserRegisteredEventListener(
-    private val persistenceUserClient: PersistenceUserClient,
+    private val coreUserClient: CoreUserClient,
     private val redisTemplate: StringRedisTemplate,
     private val objectMapper: ObjectMapper,
     private val properties: OutboxProperties
@@ -29,7 +29,7 @@ class UserRegisteredEventListener(
 
         try {
             when (eventType) {
-                // único evento que efetivamente provisiona um User em api-persistence
+                // único evento que efetivamente provisiona um User em api-core
                 "USER_REGISTERED" -> handleUserRegistered(fields["payload"])
                 // outros eventos são ignorados por esse listener
                 else -> log.debug("eventType diferente de USER_REGISTERED ignorado: {}", eventType)
@@ -42,12 +42,12 @@ class UserRegisteredEventListener(
         }
     }
 
-    // extrai authId do JSON e delega para PersistenceUserClient fazer a request para api-persistence
+    // extrai authId do JSON e delega para CoreUserClient fazer a request para api-core
     private fun handleUserRegistered(payloadJson: String?) {
         requireNotNull(payloadJson) { "payload ausente no evento USER_REGISTERED" }
         // payload gravado como {"authUserId":"<uuid>"} por UserServiceImpl/FirebaseAuthenticationServiceImpl
         val authUserId = objectMapper.readTree(payloadJson).get("authUserId").asString()
-        persistenceUserClient.provisionUser(UUID.fromString(authUserId))
+        coreUserClient.provisionUser(UUID.fromString(authUserId))
     }
 
     // confirma está entrada no consumer group configurado (XACK)
