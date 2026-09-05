@@ -68,6 +68,12 @@ class SecurityConfig(
             it.requestMatchers("/actuator/health").permitAll()
             // Endpoint JWKS público
             it.requestMatchers(HttpMethod.GET, "/.well-known/jwks.json").permitAll()
+            // Docs OpenAPI/Swagger ficam públicas
+            it.requestMatchers(
+                "/v3/api-docs/**",
+                "/swagger-ui/**",
+                "/swagger-ui.html",
+            ).permitAll()
             // o resto exige autenticação
             it.anyRequest().authenticated()
         }
