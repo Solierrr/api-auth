@@ -13,5 +13,5 @@ exec infisical run \
   --token="$INFISICAL_TOKEN" \
   --projectId=2296d19c-5f3b-41e1-afa3-fcde39966a71 \
   --env="${INFISICAL_ENV:-qa}" \
-  --path=/database --path=/auth --path=/outbox --path=/redis --path=/service-urls \
+  --path=/ \
   -- sh -c 'mkdir -p "$(dirname "$JWT_KEYSTORE_PATH")" && echo "$JWT_KEYSTORE_BASE64" | base64 -d > "$JWT_KEYSTORE_PATH" && exec java -jar app.jar'
