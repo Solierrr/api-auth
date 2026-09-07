@@ -2,6 +2,8 @@ package com.solaria.auth.outbox.consumer
 
 import com.solaria.auth.integration.core.CoreUserClient
 import com.solaria.auth.outbox.OutboxProperties
+import io.micrometer.observation.Observation
+import io.micrometer.observation.ObservationRegistry
 import org.slf4j.LoggerFactory
 import org.springframework.data.redis.connection.stream.MapRecord
 import org.springframework.data.redis.core.StringRedisTemplate
@@ -16,7 +18,8 @@ class UserRegisteredEventListener(
     private val coreUserClient: CoreUserClient,
     private val redisTemplate: StringRedisTemplate,
     private val objectMapper: ObjectMapper,
-    private val properties: OutboxProperties
+    private val properties: OutboxProperties,
+    private val observationRegistry: ObservationRegistry
 ) : StreamListener<String, MapRecord<String, String, String>> {
 
     private val log = LoggerFactory.getLogger(UserRegisteredEventListener::class.java)
@@ -27,18 +30,31 @@ class UserRegisteredEventListener(
         val fields = record.value
         val eventType = fields["eventType"]
 
+        val observation = Observation.createNotStarted("outbox.consume", observationRegistry)
+            .lowCardinalityKeyValue("messaging.system", "redis")
+            .lowCardinalityKeyValue("messaging.operation", "process")
+            .lowCardinalityKeyValue("messaging.destination.name", properties.streamKey)
+            .lowCardinalityKeyValue("outbox.event.type", eventType ?: "unknown")
+            .highCardinalityKeyValue("messaging.message.id", record.id.value)
+            .start()
+
         try {
-            when (eventType) {
-                // único evento que efetivamente provisiona um User em api-core
-                "USER_REGISTERED" -> handleUserRegistered(fields["payload"])
-                // outros eventos são ignorados por esse listener
-                else -> log.debug("eventType diferente de USER_REGISTERED ignorado: {}", eventType)
+            observation.openScope().use {
+                when (eventType) {
+                    // único evento que efetivamente provisiona um User em api-core
+                    "USER_REGISTERED" -> handleUserRegistered(fields["payload"])
+                    // outros eventos são ignorados por esse listener
+                    else -> log.debug("eventType diferente de USER_REGISTERED ignorado: {}", eventType)
+                }
+                //  após processamento ser concluído com sucesso -> confirma mensagem no consumer group (XACK)
+                acknowledge(record)
             }
-            //  após processamento ser concluído com sucesso -> confirma mensagem no consumer group (XACK)
-            acknowledge(record)
         } catch (processingFailure: Exception) {
             // se não ->  mensagem continua pendente no consumer group
+            observation.error(processingFailure)
             log.warn("Falha ao processar evento de outbox {}, deixando pendente para retry", record.id, processingFailure)
+        } finally {
+            observation.stop()
         }
     }
 
