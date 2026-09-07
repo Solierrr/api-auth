@@ -1,5 +1,6 @@
 package com.solaria.auth.integration.core
 
+import io.micrometer.observation.ObservationRegistry
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -16,7 +17,10 @@ class CoreClientConfig {
 
     // Monta o RestClient usado para chamar api-core, com timeouts explícitos e URL base fixa
     @Bean
-    fun coreRestClient(properties: CoreClientProperties): RestClient {
+    fun coreRestClient(
+        properties: coreClientProperties,
+        observationRegistry: ObservationRegistry,
+    ): RestClient {
         // HttpClient JDK nativo, com o timeout de conexão vindo da config
         val httpClient = HttpClient.newBuilder()
             .connectTimeout(properties.connectTimeout)
@@ -29,6 +33,7 @@ class CoreClientConfig {
         return RestClient.builder()
             .baseUrl(properties.baseUrl)
             .requestFactory(requestFactory)
+            .observationRegistry(observationRegistry)
             .build()
     }
 }

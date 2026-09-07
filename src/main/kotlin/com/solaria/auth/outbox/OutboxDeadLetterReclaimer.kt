@@ -1,5 +1,7 @@
 package com.solaria.auth.outbox
 
+import io.micrometer.observation.Observation
+import io.micrometer.observation.ObservationRegistry
 import org.slf4j.LoggerFactory
 import org.springframework.data.domain.Range
 import org.springframework.data.redis.connection.RedisStreamCommands.XClaimOptions
@@ -15,7 +17,8 @@ import java.time.Duration
 @Component
 class OutboxDeadLetterReclaimer(
     private val redisTemplate: StringRedisTemplate,
-    private val properties: OutboxProperties
+    private val properties: OutboxProperties,
+    private val observationRegistry: ObservationRegistry
 ) {
     private val log = LoggerFactory.getLogger(OutboxDeadLetterReclaimer::class.java)
 
@@ -28,18 +31,32 @@ class OutboxDeadLetterReclaimer(
         // até 100 mensagens pendentes por execução
         val pending = ops.pending(properties.streamKey, properties.consumerGroup, Range.unbounded<String>(), 100L)
             ?: return
+        if (!pending.iterator().hasNext()) return
 
-        for (message in pending) {
-            // barreira para caso outro consumer esteja processando a mensagem
-            if (message.elapsedTimeSinceLastDelivery < Duration.ofMillis(properties.visibilityTimeoutMs)) continue
+        val observation = Observation.createNotStarted("outbox.reclaim", observationRegistry)
+            .lowCardinalityKeyValue("messaging.system", "redis")
+            .lowCardinalityKeyValue("messaging.destination.name", properties.streamKey)
+            .start()
+        try {
+            observation.openScope().use {
+                for (message in pending) {
+                    // barreira para caso outro consumer esteja processando a mensagem
+                    if (message.elapsedTimeSinceLastDelivery < Duration.ofMillis(properties.visibilityTimeoutMs)) continue
 
-            if (message.totalDeliveryCount >= properties.maxDeliveryAttempts) {
-                // excedeu o limite de tentativas -> move para a DLQ
-                moveToDeadLetter(message)
-            } else {
-                // abaixo do limite -> reclama para este consumer, que a pegará na próxima leitura
-                reclaimForRetry(message)
+                    if (message.totalDeliveryCount >= properties.maxDeliveryAttempts) {
+                        // excedeu o limite de tentativas -> move para a DLQ
+                        moveToDeadLetter(message)
+                    } else {
+                        // abaixo do limite -> reclama para este consumer, que a pegará na próxima leitura
+                        reclaimForRetry(message)
+                    }
+                }
             }
+        } catch (sweepFailure: Exception) {
+            observation.error(sweepFailure)
+            throw sweepFailure
+        } finally {
+            observation.stop()
         }
     }
 
