@@ -3,6 +3,7 @@ package com.solaria.auth.security.config
 import com.solaria.auth.security.AccountUserDetailsService
 
 import com.solaria.auth.security.JwtAuthenticationFilter
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -18,6 +19,9 @@ import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration
+import org.springframework.web.cors.CorsConfiguration
+import org.springframework.web.cors.CorsConfigurationSource
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 import jakarta.servlet.http.HttpServletResponse
 
 @Configuration
@@ -26,7 +30,9 @@ import jakarta.servlet.http.HttpServletResponse
 @EnableConfigurationProperties(JwtProperties::class)
 class SecurityConfig(
     private val jwtAuthenticationFilter: JwtAuthenticationFilter,
-    private val accountUserDetailsService: AccountUserDetailsService
+    private val accountUserDetailsService: AccountUserDetailsService,
+    // Origens permitidas (app.cors.allowed-origins é uma string CSV)
+    @Value("\${app.cors.allowed-origins}") private val allowedOrigins: String
 ) {
     /**
      * Fábrica da única SecurityFilterChain deste serviço
@@ -39,6 +45,7 @@ class SecurityConfig(
         .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
         // Registra o provider de autenticação (login local email+senha) usado pelos fluxos de login.
         .authenticationProvider(authenticationProvider())
+        .cors { it.configurationSource(corsConfigurationSource()) }
         // Customiza o corpo das respostas 401/403 para um JSON
         .exceptionHandling {
             // Sem autenticação válida -> responde 401 com um JSON
@@ -93,4 +100,18 @@ class SecurityConfig(
     @Bean
     fun authenticationManager(configuration: AuthenticationConfiguration): AuthenticationManager =
         configuration.authenticationManager
+
+    @Bean
+    fun corsConfigurationSource(): CorsConfigurationSource {
+        val origins = allowedOrigins.split(",").map { it.trim() }.filter { it.isNotBlank() }
+
+        val configuration = CorsConfiguration()
+        configuration.allowedOrigins = origins
+        configuration.allowedMethods = listOf("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+        configuration.allowedHeaders = listOf("Authorization", "Content-Type", "apikey")
+
+        val source = UrlBasedCorsConfigurationSource()
+        source.registerCorsConfiguration("/**", configuration)
+        return source
+    }
 }
