@@ -31,7 +31,6 @@ import jakarta.servlet.http.HttpServletResponse
 class SecurityConfig(
     private val jwtAuthenticationFilter: JwtAuthenticationFilter,
     private val accountUserDetailsService: AccountUserDetailsService,
-    // Origens permitidas (app.cors.allowed-origins é uma string CSV)
     @Value("\${app.cors.allowed-origins}") private val allowedOrigins: String
 ) {
     /**
