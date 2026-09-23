@@ -1,0 +1,362 @@
+openapi: 3.0.3
+info:
+  title: Solaria — api-auth
+  version: v1
+  description: Autenticação e emissão de tokens. As operações públicas recebem credenciais no corpo da requisição;
+    logout exige um access token de usuário. Este contrato não contém segredos.
+servers:
+- url: http://localhost:{port}
+  description: Execução local; ajuste a porta ou substitua o servidor no cliente HTTP.
+  variables:
+    port:
+      default: '8081'
+tags:
+- name: Autenticação
+  description: Cadastro, login, renovação e encerramento de sessão.
+- name: Chaves públicas
+  description: Publicação das chaves para validação de JWT.
+paths:
+  /.well-known/jwks.json:
+    get:
+      tags:
+      - Chaves públicas
+      operationId: getJwks
+      summary: Consultar chaves públicas JWKS
+      description: Retorna apenas as chaves públicas usadas para verificar os access tokens.
+      security: []
+      responses:
+        '200':
+          description: Conjunto de chaves públicas.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JwkSet'
+  /auth/register:
+    post:
+      tags:
+      - Autenticação
+      operationId: register
+      summary: Cadastrar usuário
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Usuário cadastrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '409':
+          description: E-mail já cadastrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /auth/login:
+    post:
+      tags:
+      - Autenticação
+      operationId: login
+      summary: Entrar com e-mail e senha
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/AuthSuccess'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /auth/firebase:
+    post:
+      tags:
+      - Autenticação
+      operationId: firebaseLogin
+      summary: Entrar com Firebase
+      description: Requer Firebase habilitado na configuração do serviço.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FirebaseLoginRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/AuthSuccess'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Conta existente requer vínculo ou identidade já associada.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                - $ref: '#/components/schemas/AccountLinkRequiredResponse'
+                - $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: E-mail verificado é necessário.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Firebase indisponível.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /auth/firebase/link:
+    post:
+      tags:
+      - Autenticação
+      operationId: linkFirebaseAccount
+      summary: Vincular Firebase à conta local
+      description: Requer Firebase habilitado na configuração do serviço.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FirebaseAccountLinkRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/AuthSuccess'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Identidade já vinculada ou e-mail incompatível.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Firebase indisponível.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /auth/refresh:
+    post:
+      tags:
+      - Autenticação
+      operationId: refresh
+      summary: Renovar tokens
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/AuthSuccess'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /auth/logout:
+    post:
+      tags:
+      - Autenticação
+      operationId: logout
+      summary: Encerrar sessão
+      security:
+      - bearerAuth: []
+      responses:
+        '204':
+          description: Sessão encerrada; sem corpo na resposta.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Access token de usuário emitido por login, Firebase ou refresh.
+  responses:
+    AuthSuccess:
+      description: Tokens emitidos.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/AuthResponse'
+    ValidationError:
+      description: Corpo inválido.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Credencial inválida ou ausente.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  schemas:
+    RegisterRequest:
+      type: object
+      required:
+      - email
+      - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+          minLength: 12
+          maxLength: 72
+    LoginRequest:
+      type: object
+      required:
+      - email
+      - password
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 320
+        password:
+          type: string
+          format: password
+          maxLength: 72
+    FirebaseLoginRequest:
+      type: object
+      required:
+      - idToken
+      properties:
+        idToken:
+          type: string
+          maxLength: 10000
+          description: Firebase ID token fornecido pelo cliente.
+        device:
+          type: string
+          maxLength: 255
+          nullable: true
+    FirebaseAccountLinkRequest:
+      type: object
+      required:
+      - email
+      - password
+      - idToken
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 320
+        password:
+          type: string
+          format: password
+          maxLength: 72
+        idToken:
+          type: string
+          maxLength: 10000
+        device:
+          type: string
+          maxLength: 255
+          nullable: true
+    RefreshTokenRequest:
+      type: object
+      required:
+      - refreshToken
+      properties:
+        refreshToken:
+          type: string
+          maxLength: 128
+    AuthResponse:
+      type: object
+      required:
+      - accessToken
+      - refreshToken
+      - accessTokenExpiresAt
+      - userId
+      - email
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        accessTokenExpiresAt:
+          type: string
+          format: date-time
+        userId:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+    RegisterResponse:
+      type: object
+      required:
+      - id
+      - email
+      - message
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        message:
+          type: string
+    ErrorResponse:
+      type: object
+      required:
+      - status
+      - message
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        errors:
+          type: array
+          items:
+            type: string
+          nullable: true
+    AccountLinkRequiredResponse:
+      type: object
+      required:
+      - code
+      - message
+      - email
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        email:
+          type: string
+          format: email
+    JwkSet:
+      type: object
+      required:
+      - keys
+      properties:
+        keys:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
