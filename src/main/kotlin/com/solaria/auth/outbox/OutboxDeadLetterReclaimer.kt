@@ -1,6 +1,7 @@
 package com.solaria.auth.outbox
 
 import org.slf4j.LoggerFactory
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.data.domain.Range
 import org.springframework.data.redis.connection.RedisStreamCommands.XClaimOptions
 import org.springframework.data.redis.connection.stream.PendingMessage
@@ -13,6 +14,12 @@ import java.time.Duration
 // procura as mensagens pendentes do consumer group e decide entre mandar pra retry ou pra DLQ
 // [BACKLOG]-> **analisar futura integração com grafana ou outro sistema de observabilidade para DLQs**
 @Component
+@ConditionalOnProperty(
+    prefix = "app.outbox.consumer",
+    name = ["enabled"],
+    havingValue = "true",
+    matchIfMissing = true
+)
 class OutboxDeadLetterReclaimer(
     private val redisTemplate: StringRedisTemplate,
     private val properties: OutboxProperties
