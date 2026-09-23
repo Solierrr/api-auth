@@ -4,6 +4,7 @@ import com.solaria.auth.repository.OutboxEventRepository
 import io.micrometer.observation.Observation
 import io.micrometer.observation.ObservationRegistry
 import org.slf4j.LoggerFactory
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.data.domain.PageRequest
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
@@ -12,6 +13,12 @@ import java.time.Instant
 
 //  Procura por OutboxEvent não publicado e publica na redis stream pelo OutboxStreamPublisher
 @Component
+@ConditionalOnProperty(
+    prefix = "app.outbox.consumer",
+    name = ["enabled"],
+    havingValue = "true",
+    matchIfMissing = true
+)
 class OutboxPollingScheduler(
     private val outboxEventRepository: OutboxEventRepository,
     private val streamPublisher: OutboxStreamPublisher,
