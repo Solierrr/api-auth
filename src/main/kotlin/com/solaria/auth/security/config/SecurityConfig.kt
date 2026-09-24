@@ -3,6 +3,8 @@ package com.solaria.auth.security.config
 import com.solaria.auth.security.AccountUserDetailsService
 
 import com.solaria.auth.security.JwtAuthenticationFilter
+import com.solaria.auth.observability.HttpObservationErrors
+import org.slf4j.LoggerFactory
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -28,6 +30,8 @@ class SecurityConfig(
     private val jwtAuthenticationFilter: JwtAuthenticationFilter,
     private val accountUserDetailsService: AccountUserDetailsService
 ) {
+    private val log = LoggerFactory.getLogger(SecurityConfig::class.java)
+
     /**
      * Fábrica da única SecurityFilterChain deste serviço
      */
@@ -40,15 +44,20 @@ class SecurityConfig(
         // Registra o provider de autenticação (login local email+senha) usado pelos fluxos de login.
         .authenticationProvider(authenticationProvider())
         // Customiza o corpo das respostas 401/403 para um JSON
+        // observacao do servidor como erro + log WARN correlacionado ao trace
         .exceptionHandling {
             // Sem autenticação válida -> responde 401 com um JSON
-            it.authenticationEntryPoint { _, response, _ ->
+            it.authenticationEntryPoint { request, response, authException ->
+                HttpObservationErrors.mark(request, authException)
+                log.warn("401 em {} {}: {}", request.method, request.requestURI, authException.message)
                 response.status = HttpServletResponse.SC_UNAUTHORIZED
                 response.contentType = "application/json"
                 response.writer.write("{\"status\":\"UNAUTHORIZED\",\"message\":\"Authentication is required\",\"errors\":null}")
             }
             // Autenticado, mas sem permissão para o recurso -> responde 403 com um JSON
-            it.accessDeniedHandler { _, response, _ ->
+            it.accessDeniedHandler { request, response, accessDeniedException ->
+                HttpObservationErrors.mark(request, accessDeniedException)
+                log.warn("403 em {} {}: {}", request.method, request.requestURI, accessDeniedException.message)
                 response.status = HttpServletResponse.SC_FORBIDDEN
                 response.contentType = "application/json"
                 response.writer.write("{\"status\":\"FORBIDDEN\",\"message\":\"Access is denied\",\"errors\":null}")
@@ -64,8 +73,8 @@ class SecurityConfig(
                 "/auth/firebase/link",
                 "/auth/refresh"
             ).permitAll()
-            // Health check sem precisar de token.
-            it.requestMatchers("/actuator/health").permitAll()
+            // /actuator/** e tratado antes por observability/ActuatorSecurityConfig
+            // health/info liberados, resto denyAll
             // Endpoint JWKS público
             it.requestMatchers(HttpMethod.GET, "/.well-known/jwks.json").permitAll()
             // Docs OpenAPI/Swagger ficam públicas
