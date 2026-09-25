@@ -1,13 +1,11 @@
 package com.solaria.auth
 
 import com.solaria.auth.entity.FederatedIdentity
-import com.solaria.auth.entity.OutboxEvent
 import com.solaria.auth.entity.SecurityEvent
 import com.solaria.auth.entity.Session
 import com.solaria.auth.entity.LocalCredential
 import com.solaria.auth.entity.UserAccount
 import com.solaria.auth.repository.FederatedIdentityRepository
-import com.solaria.auth.repository.OutboxEventRepository
 import com.solaria.auth.repository.SecurityEventRepository
 import com.solaria.auth.repository.UserAccountRepository
 import com.solaria.auth.security.firebase.VerifiedFirebaseToken
@@ -35,7 +33,6 @@ import kotlin.test.assertNotNull
 class FederatedLoginTransactionTests {
     private lateinit var identityRepository: FederatedIdentityRepository
     private lateinit var userRepository: UserAccountRepository
-    private lateinit var outboxRepository: OutboxEventRepository
     private lateinit var securityEventRepository: SecurityEventRepository
     private lateinit var passwordEncoder: PasswordEncoder
     private lateinit var sessionIssuer: AuthSessionIssuer
@@ -46,7 +43,6 @@ class FederatedLoginTransactionTests {
     fun setUp() {
         identityRepository = Mockito.mock(FederatedIdentityRepository::class.java)
         userRepository = Mockito.mock(UserAccountRepository::class.java)
-        outboxRepository = Mockito.mock(OutboxEventRepository::class.java)
         securityEventRepository = Mockito.mock(SecurityEventRepository::class.java)
         passwordEncoder = Mockito.mock(PasswordEncoder::class.java)
         sessionIssuer = FakeSessionIssuer()
@@ -54,7 +50,6 @@ class FederatedLoginTransactionTests {
         transaction = FederatedLoginTransaction(
             identityRepository,
             userRepository,
-            outboxRepository,
             securityEventRepository,
             passwordEncoder,
             sessionIssuer,
@@ -92,7 +87,7 @@ class FederatedLoginTransactionTests {
     }
 
     @Test
-    fun `first verified firebase login creates user identity and outbox event`() {
+    fun `first verified firebase login creates user and identity`() {
         val userId = UUID.randomUUID()
         val expected = AuthSession(
             accessToken = "access-token",
@@ -108,12 +103,11 @@ class FederatedLoginTransactionTests {
 
         val result = transaction.login(verifiedToken(), "127.0.0.1", "test-agent", "test-device")
 
-        assertEquals(expected, result)
+        assertEquals(expected.copy(newlyRegistered = true), result)
         val identityCaptor = ArgumentCaptor.forClass(FederatedIdentity::class.java)
         Mockito.verify(identityRepository).save(identityCaptor.capture())
         assertEquals(userId, identityCaptor.value.user?.id)
         assertEquals(SUBJECT, identityCaptor.value.subject)
-        Mockito.verify(outboxRepository).save(any(OutboxEvent::class.java))
     }
 
     @Test
@@ -123,7 +117,6 @@ class FederatedLoginTransactionTests {
         }
 
         Mockito.verify(userRepository, Mockito.never()).save(any(UserAccount::class.java))
-        Mockito.verify(outboxRepository, Mockito.never()).save(any(OutboxEvent::class.java))
     }
 
     @Test
@@ -147,7 +140,6 @@ class FederatedLoginTransactionTests {
         assertEquals(expected, result)
         assertContentEquals(arrayOf("password", "firebase"), (sessionIssuer as FakeSessionIssuer).authenticationMethods)
         Mockito.verify(securityEventRepository).save(any(SecurityEvent::class.java))
-        Mockito.verify(outboxRepository).save(any(OutboxEvent::class.java))
     }
 
     @Test
@@ -162,7 +154,6 @@ class FederatedLoginTransactionTests {
 
         Mockito.verify(identityRepository, Mockito.never()).save(any(FederatedIdentity::class.java))
         Mockito.verify(securityEventRepository, Mockito.never()).save(any(SecurityEvent::class.java))
-        Mockito.verify(outboxRepository, Mockito.never()).save(any(OutboxEvent::class.java))
     }
 
     @Test
@@ -179,7 +170,6 @@ class FederatedLoginTransactionTests {
         }
 
         Mockito.verify(securityEventRepository, Mockito.never()).save(any(SecurityEvent::class.java))
-        Mockito.verify(outboxRepository, Mockito.never()).save(any(OutboxEvent::class.java))
     }
 
     @Test
@@ -195,7 +185,6 @@ class FederatedLoginTransactionTests {
 
         Mockito.verify(identityRepository).save(identity)
         Mockito.verify(securityEventRepository, Mockito.never()).save(any(SecurityEvent::class.java))
-        Mockito.verify(outboxRepository, Mockito.never()).save(any(OutboxEvent::class.java))
     }
 
     private fun verifiedToken(emailVerified: Boolean = true) = VerifiedFirebaseToken(
