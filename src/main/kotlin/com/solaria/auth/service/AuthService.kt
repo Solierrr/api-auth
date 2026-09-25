@@ -9,7 +9,8 @@ data class AuthSession(
     val refreshToken: String,
     val accessTokenExpiresAt: Instant,
     val userId: UUID,
-    val email: String
+    val email: String,
+    val newlyRegistered: Boolean = false
 )
 
 interface AuthService {

@@ -2,6 +2,7 @@ package com.solaria.auth.service.impl
 
 import com.solaria.auth.entity.UserAccount
 import com.solaria.auth.enums.AccountStatus
+import com.solaria.auth.integration.core.CoreUserProvisioner
 import com.solaria.auth.service.AuthService
 import com.solaria.auth.service.AuthSession
 import com.solaria.auth.service.AuthSessionIssuer
@@ -13,6 +14,7 @@ import org.springframework.security.core.AuthenticationException
 import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 
@@ -23,9 +25,15 @@ class AuthServiceImpl(
     private val userService: UserService,
     private val refreshTokenService: RefreshTokenService,
     private val authSessionIssuer: AuthSessionIssuer,
-    private val authenticationAttemptService: AuthenticationAttemptService
+    private val authenticationAttemptService: AuthenticationAttemptService,
+    private val coreUserProvisioner: CoreUserProvisioner
 ) : AuthService {
-    override fun register(email: String, password: String): UserAccount = userService.create(email, password)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    override fun register(email: String, password: String): UserAccount {
+        val user = userService.create(email, password)
+        coreUserProvisioner.provision(requireNotNull(user.id))
+        return user
+    }
 
     override fun login(email: String, password: String, ip: String?, userAgent: String?, device: String?): AuthSession {
         try {
