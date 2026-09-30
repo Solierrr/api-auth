@@ -1,5 +1,14 @@
 # Changelog
 
+## [3.0.1](https://github.com/Solierrr/api-auth/compare/v3.0.0...v3.0.1) (2026-09-30)
+
+
+### Bug Fixes
+
+* grant pull-requests write permission to release workflow ([e0e4ee5](https://github.com/Solierrr/api-auth/commit/e0e4ee53d5487e9e0dac542b3a3d342f4c4d16af))
+* pass vault arguments correctly in PowerShell ([822355e](https://github.com/Solierrr/api-auth/commit/822355e84f8b78224feb828091a4c65d4e15cd7b))
+* support powershell secret extraction ([7118179](https://github.com/Solierrr/api-auth/commit/711817942fe1ff750d8b764adac7765344b63b03))
+
 ## [3.0.0](https://github.com/Solierrr/api-auth/compare/v0.1.0...v3.0.0) (2026-09-24)
 
 
