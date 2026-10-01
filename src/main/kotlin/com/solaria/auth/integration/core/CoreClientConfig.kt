@@ -18,7 +18,7 @@ class CoreClientConfig {
     // Monta o RestClient usado para chamar api-core, com timeouts explícitos e URL base fixa
     @Bean
     fun coreRestClient(
-        properties: coreClientProperties,
+        properties: CoreClientProperties,
         observationRegistry: ObservationRegistry,
     ): RestClient {
         // HttpClient JDK nativo, com o timeout de conexão vindo da config
