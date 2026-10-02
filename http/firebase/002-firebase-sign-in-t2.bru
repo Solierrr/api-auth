@@ -1,0 +1,27 @@
+meta {
+  name: POST Firebase sign-in (Conexao T2)
+  type: http
+  seq: 2
+}
+
+post {
+  url: https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword
+  body: json
+  auth: none
+}
+
+params:query {
+  key: {{firebaseApiKeyT2}}
+}
+
+body:json {
+  {
+    "email": "{{userEmailT2}}",
+    "password": "{{userPasswordT2}}",
+    "returnSecureToken": true
+  }
+}
+
+docs {
+  Migrated from the old TEST - Auth collection. Calls Firebase Identity Toolkit (external), not the local api-auth process. Requires a valid local Firebase API key and account in the local Bruno environment.
+}

@@ -15,16 +15,19 @@ O `api-auth` segue uma arquitetura em camadas típica de um serviço Spring Boot
 - **Outbox assíncrono sobre Redis Streams**, `OutboxPollingScheduler` lê a tabela `outbox_event` (Postgres) e publica na stream configurada (`OutboxStreamPublisher`); `OutboxDeadLetterReclaimer` reclama mensagens não confirmadas (visibility timeout) e move entregas que excederam `max-delivery-attempts` para uma stream de dead-letter. O agendamento desses jobs é ligado explicitamente em `SchedulingConfig` (`@EnableScheduling`), já que a aplicação não tem agendamento habilitado por padrão.
 - **Integração service-to-service com `api-persistence`**, `PersistenceServiceTokenClient` minta um token M2M usando um segredo compartilhado (`SERVICE_CLIENT_SECRET`) e `PersistenceUserClient` provisiona o usuário definitivo no outro serviço — o `api-auth` é a fonte da identidade/credencial, o `api-persistence` é a fonte dos dados de domínio do usuário.
 - **Persistência via JPA/Hibernate + Flyway**, schema versionado em `src/main/resources/db/migration` (`ddl-auto=validate`, nunca `update`), banco Postgres compartilhado com o `api-core` conforme documentado em `.env.example`.
-- **Coleção de testes de API em `TEST - Auth/`**, coleção [Bruno](https://www.usebruno.com/) (`opencollection.yml`) com as requisições de exemplo contra os endpoints de autenticação, fora do escopo de testes automatizados (`src/test`).
+- **Coleção de testes de API em `http/`**, coleção [Bruno](https://www.usebruno.com/) com requisições locais organizadas por recurso, fora do escopo de testes automatizados (`src/test`).
 
 ```Tree do Repositório
 ├── .mvn/
 │   └── wrapper/
 ├── .sonar/
-├── TEST - Auth/
-│   ├── Conexão - T1.yml
-│   ├── Conexão - T2.yml
-│   └── opencollection.yml
+├── http/
+│   ├── autenticacao/
+│   ├── chaves-publicas/
+│   ├── firebase/
+│   ├── environments/
+│   ├── bruno.json
+│   └── README.md
 ├── src/
 │   ├── main/
 │   │   ├── kotlin/com/solaria/auth/

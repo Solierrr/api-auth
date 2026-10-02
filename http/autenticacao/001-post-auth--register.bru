@@ -1,0 +1,23 @@
+meta {
+  name: [mutates] POST /auth/register
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/auth/register
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "{{userEmail}}",
+    "password": "{{userPassword}}"
+  }
+}
+
+docs {
+  Cadastrar usuário
+  This operation may change server state.
+}

@@ -1,0 +1,16 @@
+meta {
+  name: GET /.well-known/jwks.json
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/.well-known/jwks.json
+  body: none
+  auth: none
+}
+
+docs {
+  Consultar chaves públicas JWKS
+  Retorna apenas as chaves públicas usadas para verificar os access tokens.
+}

@@ -1,0 +1,25 @@
+meta {
+  name: [mutates] POST /auth/firebase/link
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/auth/firebase/link
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "{{userEmail}}",
+    "password": "{{userPassword}}",
+    "idToken": "{{idToken}}"
+  }
+}
+
+docs {
+  Vincular Firebase à conta local
+  Requer Firebase habilitado na configuração do serviço.
+  This operation may change server state.
+}
