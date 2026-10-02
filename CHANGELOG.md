@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.1.0](https://github.com/Solierrr/api-auth/compare/v3.0.1...v3.1.0) (2026-10-02)
+
+
+### Features
+
+* add bruno api collection ([ef98fdb](https://github.com/Solierrr/api-auth/commit/ef98fdb012a45661dd8cb30fc2a0b18563a3d37c))
+
 ## [3.0.1](https://github.com/Solierrr/api-auth/compare/v3.0.0...v3.0.1) (2026-09-30)
 
 
