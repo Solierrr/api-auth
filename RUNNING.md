@@ -61,4 +61,4 @@ Por padrão a aplicação sobe em `SERVER_PORT` (padrão `8081`, ver `applicatio
   </a>
 </p>
 
-O repositório inclui uma coleção [Bruno](https://www.usebruno.com/) em `TEST - Auth/` com requisições de exemplo para os endpoints de `/auth` (registro, login, login federado, refresh e logout). Abra a pasta diretamente no Bruno para importar a coleção.
+O repositório inclui uma coleção [Bruno](https://www.usebruno.com/) em `http/` com requisições de exemplo para os endpoints de `/auth` (registro, login, login federado, refresh e logout). Abra a pasta diretamente no Bruno para importar a coleção.

@@ -1,0 +1,22 @@
+meta {
+  name: [mutates] POST /auth/refresh
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/auth/refresh
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "refreshToken": "{{refreshToken}}"
+  }
+}
+
+docs {
+  Renovar tokens
+  This operation may change server state.
+}

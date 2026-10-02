@@ -1,0 +1,23 @@
+meta {
+  name: [mutates] POST /auth/firebase
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/auth/firebase
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "idToken": "{{idToken}}"
+  }
+}
+
+docs {
+  Entrar com Firebase
+  Requer Firebase habilitado na configuração do serviço.
+  This operation may change server state.
+}

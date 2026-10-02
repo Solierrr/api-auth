@@ -1,0 +1,23 @@
+meta {
+  name: [mutates] POST /auth/login
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/auth/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "{{userEmail}}",
+    "password": "{{userPassword}}"
+  }
+}
+
+docs {
+  Entrar com e-mail e senha
+  This operation may change server state.
+}
