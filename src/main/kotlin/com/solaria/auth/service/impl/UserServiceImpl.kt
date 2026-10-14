@@ -2,10 +2,8 @@ package com.solaria.auth.service.impl
 
 import com.solaria.auth.enums.AccountStatus
 import com.solaria.auth.entity.LocalCredential
-import com.solaria.auth.entity.OutboxEvent
 import com.solaria.auth.entity.UserAccount
 import com.solaria.auth.repository.UserAccountRepository
-import com.solaria.auth.repository.OutboxEventRepository
 import com.solaria.auth.service.UserService
 import com.solaria.auth.service.EmailAlreadyRegisteredException
 import org.springframework.security.crypto.password.PasswordEncoder
@@ -18,7 +16,6 @@ import java.util.UUID
 @Transactional
 class UserServiceImpl(
     private val userAccountRepository: UserAccountRepository,
-    private val outboxEventRepository: OutboxEventRepository,
     private val passwordEncoder: PasswordEncoder
 ) : UserService {
     override fun create(email: String, rawPassword: String): UserAccount {
@@ -30,17 +27,7 @@ class UserServiceImpl(
             user = user,
             passwordHash = requireNotNull(passwordEncoder.encode(rawPassword))
         )
-        val savedUser = userAccountRepository.save(user)
-        val userId = requireNotNull(savedUser.id)
-        outboxEventRepository.save(
-            OutboxEvent(
-                aggregateType = "AUTH_USER",
-                aggregateId = userId,
-                eventType = "USER_REGISTERED",
-                payload = "{\"authUserId\":\"$userId\"}"
-            )
-        )
-        return savedUser
+        return userAccountRepository.save(user)
     }
 
     @Transactional(readOnly = true)

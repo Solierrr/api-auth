@@ -1,13 +1,12 @@
 package com.solaria.auth.service.impl
 
 import com.solaria.auth.entity.FederatedIdentity
-import com.solaria.auth.entity.OutboxEvent
 import com.solaria.auth.entity.SecurityEvent
 import com.solaria.auth.entity.UserAccount
 import com.solaria.auth.enums.AccountStatus
 import com.solaria.auth.enums.SecurityEventType
+import com.solaria.auth.integration.core.CoreUserProvisioner
 import com.solaria.auth.repository.FederatedIdentityRepository
-import com.solaria.auth.repository.OutboxEventRepository
 import com.solaria.auth.repository.SecurityEventRepository
 import com.solaria.auth.repository.UserAccountRepository
 import com.solaria.auth.security.firebase.FirebaseTokenVerifier
@@ -33,16 +32,19 @@ import java.time.Instant
 class FirebaseAuthenticationServiceImpl(
     private val tokenVerifier: FirebaseTokenVerifier,
     private val federatedLoginTransaction: FederatedLoginTransaction,
-    private val authenticationAttemptService: AuthenticationAttemptService
+    private val authenticationAttemptService: AuthenticationAttemptService,
+    private val coreUserProvisioner: CoreUserProvisioner
 ) : FirebaseAuthenticationService {
     override fun login(idToken: String, ip: String?, userAgent: String?, device: String?): AuthSession {
         val verifiedToken = tokenVerifier.verify(idToken)
-        return try {
+        val session = try {
             federatedLoginTransaction.login(verifiedToken, ip, userAgent, device)
         } catch (exception: DataIntegrityViolationException) {
             if (!exception.isExpectedFederatedRace()) throw exception
             federatedLoginTransaction.login(verifiedToken, ip, userAgent, device)
         }
+        if (session.newlyRegistered) coreUserProvisioner.provision(session.userId)
+        return session
     }
 
     override fun link(
@@ -95,7 +97,6 @@ class FirebaseAuthenticationServiceImpl(
 class FederatedLoginTransaction(
     private val federatedIdentityRepository: FederatedIdentityRepository,
     private val userAccountRepository: UserAccountRepository,
-    private val outboxEventRepository: OutboxEventRepository,
     private val securityEventRepository: SecurityEventRepository,
     private val passwordEncoder: PasswordEncoder,
     private val authSessionIssuer: AuthSessionIssuer,
@@ -119,6 +120,7 @@ class FederatedLoginTransaction(
         userAccountRepository.save(user)
         authenticationAttemptService.recordSuccess(user, ip, userAgent, "firebase")
         return authSessionIssuer.issue(user, arrayOf("firebase"), ip, userAgent, device)
+        .copy(newlyRegistered = existingIdentity == null)
     }
 
     @Transactional
@@ -184,14 +186,6 @@ class FederatedLoginTransaction(
                 details = "{\"authority\":\"FIREBASE\"}"
             )
         )
-        outboxEventRepository.save(
-            OutboxEvent(
-                aggregateType = "AUTH_USER",
-                aggregateId = userId,
-                eventType = "FEDERATED_IDENTITY_LINKED",
-                payload = "{\"authUserId\":\"$userId\",\"authority\":\"FIREBASE\"}"
-            )
-        )
         return identity
     }
 
@@ -204,7 +198,6 @@ class FederatedLoginTransaction(
         }
 
         val user = userAccountRepository.save(UserAccount(primaryEmail = email, emailVerifiedAt = Instant.now()))
-        val userId = requireNotNull(user.id)
         federatedIdentityRepository.save(
             FederatedIdentity(
                 user = user,
@@ -213,14 +206,6 @@ class FederatedLoginTransaction(
                 email = email,
                 emailVerified = true,
                 lastLoginAt = Instant.now()
-            )
-        )
-        outboxEventRepository.save(
-            OutboxEvent(
-                aggregateType = "AUTH_USER",
-                aggregateId = userId,
-                eventType = "USER_REGISTERED",
-                payload = "{\"authUserId\":\"$userId\"}"
             )
         )
         return user

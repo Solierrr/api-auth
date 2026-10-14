@@ -18,8 +18,6 @@ import org.springframework.http.server.observation.ServerRequestObservationConte
  *
  * Concentra na camada de infra os beans que ajustam Micrometer / Micrometer Tracing / OpenTelemetry,
  * sem misturar observabilidade com negócio
- *
- * **Não** cobre `@Scheduled` nem listener de Redis Stream(usa`Observation` explícita)
  */
 @Configuration
 class ObservabilityConfig {
