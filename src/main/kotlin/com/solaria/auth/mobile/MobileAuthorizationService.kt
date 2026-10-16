@@ -18,7 +18,6 @@ import java.security.MessageDigest
 import java.security.SecureRandom
 import java.time.Instant
 import java.util.Base64
-import java.util.UUID
 
 data class StartMobile(val clientId: String, val redirectUri: String, val state: String, val codeChallenge: String, val codeChallengeMethod: String)
 data class MobileGrant(val clientId: String, val redirectUri: String, val code: String, val codeVerifier: String)

@@ -8,7 +8,10 @@ import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
-import org.springframework.web.bind.annotation.*
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RestController
 
 data class EmailRequest(@field:Email @field:NotBlank @field:Size(max = 254) val email: String)
 data class TokenRequest(@field:Size(min = 43, max = 43) val token: String)
