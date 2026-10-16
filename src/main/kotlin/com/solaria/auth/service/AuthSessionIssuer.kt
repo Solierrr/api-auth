@@ -39,10 +39,13 @@ class DefaultAuthSessionIssuer(
     }
 
     override fun resume(user: UserAccount, session: Session, refreshToken: String): AuthSession = AuthSession(
-        accessToken = jwtService.generateAccessToken(user, requireNotNull(session.id), session.authenticationMethods),
+        accessToken = jwtService.generateAccessToken(user, requireNotNull(session.id), session.authenticationMethods, session.clientId, session.context),
         refreshToken = refreshToken,
         accessTokenExpiresAt = Instant.now().plus(jwtProperties.accessTokenTtl),
         userId = requireNotNull(user.id),
-        email = user.primaryEmail
+        email = user.primaryEmail,
+        sessionId = session.id,
+        clientId = session.clientId,
+        context = session.context
     )
 }

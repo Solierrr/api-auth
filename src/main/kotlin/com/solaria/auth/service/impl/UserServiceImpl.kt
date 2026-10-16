@@ -22,6 +22,7 @@ class UserServiceImpl(
     private val passwordEncoder: PasswordEncoder
 ) : UserService {
     override fun create(email: String, rawPassword: String): UserAccount {
+        if (rawPassword.length < 12 || rawPassword.toByteArray().size > 72) throw com.solaria.auth.mobile.MobileFlowException("PASSWORD_POLICY")
         val normalizedEmail = email.trim().lowercase()
         require(normalizedEmail.isNotBlank()) { "Email must not be blank" }
         if (userAccountRepository.existsByPrimaryEmail(normalizedEmail)) throw EmailAlreadyRegisteredException()
