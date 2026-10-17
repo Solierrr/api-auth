@@ -4,9 +4,8 @@ import io.micrometer.observation.ObservationRegistry
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.http.client.JdkClientHttpRequestFactory
+import org.springframework.http.client.SimpleClientHttpRequestFactory
 import org.springframework.web.client.RestClient
-import java.net.http.HttpClient
 
 // factory responsável por criar as chamadas http
 
@@ -21,13 +20,10 @@ class CoreClientConfig {
         properties: CoreClientProperties,
         observationRegistry: ObservationRegistry,
     ): RestClient {
-        // HttpClient JDK nativo, com o timeout de conexão vindo da config
-        val httpClient = HttpClient.newBuilder()
-            .connectTimeout(properties.connectTimeout)
-            .build()
-        // factory HTTP do RestClient sobre esse HttpClient
-        val requestFactory = JdkClientHttpRequestFactory(httpClient)
-        // timeout de leitura vindo da config, aplicado à factory
+        // Factory simples (HttpURLConnection, HTTP/1.1): o HttpClient do JDK negociava HTTP/2 com o edge do
+        // Render e as chamadas terminavam em "Request cancelled", então o provisionamento nunca chegava na api-core
+        val requestFactory = SimpleClientHttpRequestFactory()
+        requestFactory.setConnectTimeout(properties.connectTimeout)
         requestFactory.setReadTimeout(properties.readTimeout)
         // client final, com a URL base de api-core já fixada
         return RestClient.builder()
