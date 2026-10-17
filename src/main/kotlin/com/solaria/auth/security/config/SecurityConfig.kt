@@ -3,8 +3,8 @@ package com.solaria.auth.security.config
 import com.solaria.auth.security.AccountUserDetailsService
 
 import com.solaria.auth.security.JwtAuthenticationFilter
-import com.solaria.auth.observability.HttpObservationErrors
-import org.slf4j.LoggerFactory
+import com.solaria.auth.security.ProblemDetailAuthenticationEntryPoint
+import com.solaria.auth.security.ProblemDetailAccessDeniedHandler
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -20,7 +20,6 @@ import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration
-import jakarta.servlet.http.HttpServletResponse
 
 @Configuration
 @EnableWebSecurity
@@ -28,9 +27,10 @@ import jakarta.servlet.http.HttpServletResponse
 @EnableConfigurationProperties(JwtProperties::class)
 class SecurityConfig(
     private val jwtAuthenticationFilter: JwtAuthenticationFilter,
-    private val accountUserDetailsService: AccountUserDetailsService
+    private val accountUserDetailsService: AccountUserDetailsService,
+    private val problemDetailAuthenticationEntryPoint: ProblemDetailAuthenticationEntryPoint,
+    private val problemDetailAccessDeniedHandler: ProblemDetailAccessDeniedHandler,
 ) {
-    private val log = LoggerFactory.getLogger(SecurityConfig::class.java)
 
     /**
      * Fábrica da única SecurityFilterChain deste serviço
@@ -39,6 +39,7 @@ class SecurityConfig(
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain = http
         // CSRF desabilitado
         .csrf { it.disable() }
+        .cors { }
         // Nunca cria/usa HttpSession
         .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
         // Registra o provider de autenticação (login local email+senha) usado pelos fluxos de login.
@@ -47,21 +48,9 @@ class SecurityConfig(
         // observacao do servidor como erro + log WARN correlacionado ao trace
         .exceptionHandling {
             // Sem autenticação válida -> responde 401 com um JSON
-            it.authenticationEntryPoint { request, response, authException ->
-                HttpObservationErrors.mark(request, authException)
-                log.warn("401 em {} {}: {}", request.method, request.requestURI, authException.message)
-                response.status = HttpServletResponse.SC_UNAUTHORIZED
-                response.contentType = "application/json"
-                response.writer.write("{\"status\":\"UNAUTHORIZED\",\"message\":\"Authentication is required\",\"errors\":null}")
-            }
+            it.authenticationEntryPoint(problemDetailAuthenticationEntryPoint)
             // Autenticado, mas sem permissão para o recurso -> responde 403 com um JSON
-            it.accessDeniedHandler { request, response, accessDeniedException ->
-                HttpObservationErrors.mark(request, accessDeniedException)
-                log.warn("403 em {} {}: {}", request.method, request.requestURI, accessDeniedException.message)
-                response.status = HttpServletResponse.SC_FORBIDDEN
-                response.contentType = "application/json"
-                response.writer.write("{\"status\":\"FORBIDDEN\",\"message\":\"Access is denied\",\"errors\":null}")
-            }
+            it.accessDeniedHandler(problemDetailAccessDeniedHandler)
         }
         .authorizeHttpRequests {
             // Endpoints de emissão de credencial ficam públicos
@@ -71,12 +60,17 @@ class SecurityConfig(
                 "/auth/login",
                 "/auth/firebase",
                 "/auth/firebase/link",
-                "/auth/refresh"
+                "/auth/refresh",
+                "/auth/mobile/transactions",
+                "/auth/mobile/token",
+                "/auth/email/verification/confirm",
+                "/auth/password/reset/request",
+                "/auth/password/reset/confirm"
             ).permitAll()
             // /actuator/** e tratado antes por observability/ActuatorSecurityConfig
             // health/info liberados, resto denyAll
             // Endpoint JWKS público
-            it.requestMatchers(HttpMethod.GET, "/.well-known/jwks.json").permitAll()
+            it.requestMatchers(HttpMethod.GET, "/internal/sessions/*", "/.well-known/jwks.json").permitAll()
             // Docs OpenAPI/Swagger ficam públicas
             it.requestMatchers(
                 "/v3/api-docs/**",
