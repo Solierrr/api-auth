@@ -98,6 +98,9 @@ class AuthController(
         refreshToken = refreshToken,
         accessTokenExpiresAt = accessTokenExpiresAt,
         userId = userId,
-        email = email
+        email = email,
+        sessionId = sessionId,
+        clientId = clientId,
+        context = context
     )
 }

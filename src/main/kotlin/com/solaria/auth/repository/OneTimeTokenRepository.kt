@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.JpaRepository
 import java.util.UUID
 
 interface OneTimeTokenRepository : JpaRepository<OneTimeToken, UUID> {
+    fun findFirstByUserIdAndTypeOrderByCreatedAtDesc(userId: UUID, type: OneTimeTokenType): OneTimeToken?
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     fun findByTokenHashAndType(tokenHash: ByteArray, type: OneTimeTokenType): OneTimeToken?
 }

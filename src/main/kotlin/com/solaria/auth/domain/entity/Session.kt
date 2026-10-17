@@ -33,6 +33,12 @@ class Session(
 
     var device: String? = null,
 
+    @Column(name = "client_id", nullable = false, length = 100)
+    var clientId: String = "solaria-web",
+
+    @Column(nullable = false, length = 30)
+    var context: String = "web",
+
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(name = "authentication_methods", nullable = false, columnDefinition = "text[]")
     var authenticationMethods: Array<String> = emptyArray(),

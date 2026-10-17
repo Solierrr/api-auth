@@ -9,7 +9,8 @@ data class VerifiedFirebaseToken(
     val issuer: String,
     val subject: String,
     val email: String?,
-    val emailVerified: Boolean
+    val emailVerified: Boolean,
+    val signInProvider: String? = null
 )
 
 interface FirebaseTokenVerifier {
@@ -37,7 +38,8 @@ class FirebaseAdminTokenVerifier(
             issuer = "https://securetoken.google.com/${properties.projectId}",
             subject = decoded.uid,
             email = decoded.email,
-            emailVerified = decoded.isEmailVerified
+            emailVerified = decoded.isEmailVerified,
+            signInProvider = (decoded.claims["firebase"] as? Map<*, *>)?.get("sign_in_provider") as? String
         )
     }
 }

@@ -54,13 +54,15 @@ class JwtAuthenticationFilter(
             sessionRepository.findById(identity.sessionId).orElse(null)?.let { session ->
                 session.revokedAt == null &&
                     session.expiresAt.isAfter(java.time.Instant.now()) &&
-                    session.user?.id == identity.userId
+                    session.user?.id == identity.userId &&
+                    (session.context != "professional" || request.requestURI in setOf("/auth/me", "/auth/refresh",
+                        "/auth/sessions/current/logout", "/auth/sessions/logout-all"))
             } == true
         }?.let { identity ->
             // busca o usuário e confere se a conta está ACTIVE
             userAccountRepository.findById(identity.userId).orElse(null)
                 ?.takeIf { it.status == AccountStatus.ACTIVE && (it.lockedUntil == null || it.lockedUntil!!.isBefore(java.time.Instant.now())) }
-                ?.let(AuthUser::fromBearerToken)?.let { user ->
+                ?.let { AuthUser.fromBearerToken(it, identity.sessionId) }?.let { user ->
                 // Todas as checagens passaram -> popula o SecurityContext com um Authentication válido
                 UsernamePasswordAuthenticationToken(user, null, user.authorities).also { authentication ->
                     authentication.details = WebAuthenticationDetailsSource().buildDetails(request)
