@@ -13,5 +13,8 @@ data class AuthResponse(
 
     val userId: UUID,
 
-    val email: String
+    val email: String,
+    val sessionId: UUID? = null,
+    val clientId: String = "solaria-web",
+    val context: String = "web"
 )
