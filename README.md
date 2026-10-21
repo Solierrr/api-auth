@@ -45,3 +45,32 @@ O `api-auth` é o serviço de autenticação e identidade da Solaria, responsáv
 - [CONTRIBUTING.md](https://github.com/Solierrr/.github/blob/main/.github/CONTRIBUTING.md), convenções de commit, branch e Pull Request.
 - [CODE_OF_CONDUCT.md](https://github.com/Solierrr/.github/blob/main/.github/CODE_OF_CONDUCT.md), código de conduta do projeto.
 - [SECURITY.md](https://github.com/Solierrr/.github/blob/main/.github/SECURITY.md), como reportar vulnerabilidades de segurança.
+
+
+## Sessão mobile one-click em QA (Render)
+
+`POST /auth/mobile/qa/session` não recebe corpo nem identidade do app. Requer o header
+`X-QA-Device-Token`: credencial aleatória por aparelho, provisionada por ADB fora do APK
+e armazenada pelo app com proteção do Android Keystore.
+
+Configuração exclusiva do servidor QA:
+
+- `DEPLOYMENT_ENVIRONMENT=qa` (exato); profiles `prod`/`production` bloqueiam a rota.
+- `QA_MOBILE_LOGIN_ENABLED=true`; padrão `false`.
+- `QA_MOBILE_ACCOUNT_EMAIL`: conta seed existente, ativa e com e-mail confirmado.
+- `QA_MOBILE_DEVICE_TOKENS`: credenciais autorizadas separadas por vírgula, cada uma
+  gerada com ao menos 32 bytes aleatórios e codificada em base64url sem padding
+  (43 a 128 caracteres). Identificador público de aparelho não é credencial.
+- `MOBILE_SERVICE_TOKEN` e integração api-core configurados para elegibilidade.
+
+Mantém aprovação profissional, cadastro completo, conta ativa, bloqueio e e-mail
+verificado. TOTP habilitado é negado até haver suporte ao desafio. Emite sessão
+`mobile`, `clientId=solaria-mobile`, `context=professional`, com refresh, expiração e
+revogação normais. PKCE de produção permanece. Respostas usam `Cache-Control: no-store`.
+
+Retorna 404 fora de QA/desabilitado, 503 com configuração inválida, 401 para credencial
+ausente/inválida e 403 para conta não permitida. Nunca habilitar em produção/GCP nem
+registrar o header em logs/traces/proxies. Não colocar credenciais no Git ou APK.
+
+Remover credencial da lista impede novas sessões; revogar sessões já emitidas pelas
+rotas normais. Rotacionar no servidor e reprovisionar aparelho quando necessário.
