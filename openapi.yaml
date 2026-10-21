@@ -16,6 +16,42 @@ tags:
 - name: Chaves públicas
   description: Publicação das chaves para validação de JWT.
 paths:
+  /auth/mobile/qa/session:
+    post:
+      tags: [Autenticação]
+      operationId: createQaMobileSession
+      summary: Criar sessão mobile em dispositivo QA provisionado
+      description: Exclusivo de QA no Render. A conta seed é definida no servidor; não recebe identidade nem senha. Desativado por padrão e bloqueado em produção.
+      security: []
+      parameters:
+      - name: X-QA-Device-Token
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 43
+          maxLength: 128
+          pattern: '^[A-Za-z0-9_-]+$'
+      responses:
+        '200':
+          description: Sessão profissional mobile com access e refresh tokens.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Dispositivo não autorizado.
+        '403':
+          description: Conta não elegível ou segundo fator ainda não suportado neste fluxo.
+        '404':
+          description: Fluxo desativado ou ambiente diferente de QA.
+        '503':
+          description: Configuração incompleta ou elegibilidade indisponível.
   /.well-known/jwks.json:
     get:
       tags:
