@@ -56,8 +56,8 @@ class JwtService(
     }
 
     // Ponto de entrada público para emitir um novo access token
-    fun generateAccessToken(user: UserAccount, sessionId: UUID, authenticationMethods: Array<String>): String =
-        generateToken(user, sessionId, authenticationMethods)
+    fun generateAccessToken(user: UserAccount, sessionId: UUID, authenticationMethods: Array<String>, clientId: String = "solaria-web", context: String = "web"): String =
+        generateToken(user, sessionId, authenticationMethods, clientId, context)
 
     // decodifica e valida um token extraindo duas claims userId e sessionId
     fun extractAccessTokenIdentity(token: String): AccessTokenIdentity = decoder.decode(token).let { jwt ->
@@ -68,7 +68,7 @@ class JwtService(
     }
 
     // Monta e assina um access token novo
-    private fun generateToken(user: UserAccount, sessionId: UUID, authenticationMethods: Array<String>): String {
+    private fun generateToken(user: UserAccount, sessionId: UUID, authenticationMethods: Array<String>, clientId: String, context: String): String {
         // Instante de emissão do token
         val now = Instant.now()
         val claims = JwtClaimsSet.builder()
@@ -84,8 +84,11 @@ class JwtService(
             .expiresAt(now.plus(properties.accessTokenTtl))
             // Claim customizado com o e-mail do usuário
             .claim("email", user.primaryEmail)
+            .claim("email_verified", user.emailVerifiedAt != null)
             // "sid": id da sessão associada a este token
             .claim("sid", sessionId.toString())
+            .claim("client_id", clientId)
+            .claim("context", context)
             // "amr" (authentication methods reference): quais fatores de autenticação foram usados para emitir este token
             .claim("amr", authenticationMethods.toList())
             // Claim customizado que marca este token como um access token

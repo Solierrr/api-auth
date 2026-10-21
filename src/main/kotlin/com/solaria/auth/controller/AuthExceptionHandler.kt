@@ -1,7 +1,6 @@
 package com.solaria.auth.controller
 
-import com.solaria.auth.dto.ErrorResponse
-import com.solaria.auth.dto.auth.response.AccountLinkRequiredResponse
+import com.solaria.auth.exception.handler.ProblemDetailFactory
 import com.solaria.auth.observability.HttpObservationErrors
 import com.solaria.auth.security.firebase.FirebaseUnavailableException
 import com.solaria.auth.security.firebase.InvalidFirebaseTokenException
@@ -17,6 +16,7 @@ import com.solaria.auth.service.RefreshTokenReuseException
 import jakarta.servlet.http.HttpServletRequest
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
+import org.springframework.http.ProblemDetail
 import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.security.access.AccessDeniedException
@@ -37,113 +37,112 @@ import org.springframework.web.bind.annotation.RestControllerAdvice
 @RestControllerAdvice
 class AuthExceptionHandler(
     private val request: HttpServletRequest,
+    private val factory: ProblemDetailFactory,
 ) {
     private val log = LoggerFactory.getLogger(AuthExceptionHandler::class.java)
 
     // Marca a observação da request como erro e registra um log correlacionado ao trace
-    private fun recordError(exception: Throwable, status: HttpStatus) {
+    private fun recordError(exception: Throwable, status: HttpStatus, errorCode: String) {
         HttpObservationErrors.mark(request, exception)
         if (status.is5xxServerError) {
-            log.error("Falha {} em {} {}", status.value(), request.method, request.requestURI, exception)
+            log.atError().addKeyValue("errorCode", errorCode).log("Falha {} em {} {}", status.value(), request.method, request.requestURI, exception)
         } else {
-            log.warn("Erro {} em {} {}: {}", status.value(), request.method, request.requestURI, exception.message)
+            log.atWarn().addKeyValue("errorCode", errorCode).log("Erro {} em {} {}: {}", status.value(), request.method, request.requestURI, exception.message)
         }
     }
 
     @ExceptionHandler(AuthenticationException::class)
-    fun invalidCredentials(exception: AuthenticationException): ResponseEntity<ErrorResponse> {
-        recordError(exception, HttpStatus.UNAUTHORIZED)
+    fun invalidCredentials(exception: AuthenticationException): ResponseEntity<ProblemDetail> {
+        recordError(exception, HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS")
         return error(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", "Email or password is invalid")
     }
 
     @ExceptionHandler(AccessDeniedException::class)
-    fun accessDenied(exception: AccessDeniedException): ResponseEntity<ErrorResponse> {
-        recordError(exception, HttpStatus.FORBIDDEN)
+    fun accessDenied(exception: AccessDeniedException): ResponseEntity<ProblemDetail> {
+        recordError(exception, HttpStatus.FORBIDDEN, "ACCESS_DENIED")
         return error(HttpStatus.FORBIDDEN, "ACCESS_DENIED", "Access is denied")
     }
 
     @ExceptionHandler(EmailAlreadyRegisteredException::class)
-    fun emailAlreadyRegistered(exception: EmailAlreadyRegisteredException): ResponseEntity<ErrorResponse> {
-        recordError(exception, HttpStatus.CONFLICT)
+    fun emailAlreadyRegistered(exception: EmailAlreadyRegisteredException): ResponseEntity<ProblemDetail> {
+        recordError(exception, HttpStatus.CONFLICT, "EMAIL_ALREADY_REGISTERED")
         return error(HttpStatus.CONFLICT, "EMAIL_ALREADY_REGISTERED", "Email is already registered")
     }
 
     @ExceptionHandler(InvalidRefreshTokenException::class)
-    fun invalidRefreshToken(exception: InvalidRefreshTokenException): ResponseEntity<ErrorResponse> {
-        recordError(exception, HttpStatus.UNAUTHORIZED)
+    fun invalidRefreshToken(exception: InvalidRefreshTokenException): ResponseEntity<ProblemDetail> {
+        recordError(exception, HttpStatus.UNAUTHORIZED, "INVALID_REFRESH_TOKEN")
         return error(HttpStatus.UNAUTHORIZED, "INVALID_REFRESH_TOKEN", "Refresh token is invalid")
     }
 
     @ExceptionHandler(RefreshTokenReuseException::class)
-    fun refreshTokenReuse(exception: RefreshTokenReuseException): ResponseEntity<ErrorResponse> {
-        recordError(exception, HttpStatus.UNAUTHORIZED)
+    fun refreshTokenReuse(exception: RefreshTokenReuseException): ResponseEntity<ProblemDetail> {
+        recordError(exception, HttpStatus.UNAUTHORIZED, "REFRESH_TOKEN_REUSED")
         return error(HttpStatus.UNAUTHORIZED, "REFRESH_TOKEN_REUSED", "Refresh token reuse was detected")
     }
 
     @ExceptionHandler(MethodArgumentNotValidException::class)
-    fun validationError(exception: MethodArgumentNotValidException): ResponseEntity<ErrorResponse> {
-        recordError(exception, HttpStatus.BAD_REQUEST)
-        return ResponseEntity.badRequest().body(
-            ErrorResponse(
-                status = "VALIDATION_ERROR",
-                message = "Request validation failed",
-                errors = exception.bindingResult.fieldErrors.map { "${it.field}: ${it.defaultMessage}" }
-            )
-        )
+    fun validationError(exception: MethodArgumentNotValidException): ResponseEntity<ProblemDetail> {
+        recordError(exception, HttpStatus.BAD_REQUEST, "VALIDATION_ERROR")
+        return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Request validation failed",
+            mapOf("errors" to exception.bindingResult.fieldErrors.map {
+                mapOf("field" to it.field, "message" to (it.defaultMessage ?: "Invalid value"))
+            }))
     }
 
     // Corpo de request malformado/ilegivel
     @ExceptionHandler(HttpMessageNotReadableException::class)
-    fun malformedRequest(exception: HttpMessageNotReadableException): ResponseEntity<ErrorResponse> {
-        recordError(exception, HttpStatus.BAD_REQUEST)
+    fun malformedRequest(exception: HttpMessageNotReadableException): ResponseEntity<ProblemDetail> {
+        recordError(exception, HttpStatus.BAD_REQUEST, "MALFORMED_REQUEST")
         return error(HttpStatus.BAD_REQUEST, "MALFORMED_REQUEST", "Request body is malformed or unreadable")
     }
 
     @ExceptionHandler(AccountLinkRequiredException::class)
-    fun accountLinkRequired(exception: AccountLinkRequiredException): ResponseEntity<AccountLinkRequiredResponse> {
-        recordError(exception, HttpStatus.CONFLICT)
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(AccountLinkRequiredResponse(email = exception.email))
+    fun accountLinkRequired(exception: AccountLinkRequiredException): ResponseEntity<ProblemDetail> {
+        recordError(exception, HttpStatus.CONFLICT, "ACCOUNT_LINK_REQUIRED")
+        return error(HttpStatus.CONFLICT, "ACCOUNT_LINK_REQUIRED",
+            "Authenticate with the existing account before linking Firebase", mapOf("email" to exception.email))
     }
 
     @ExceptionHandler(AccountUnavailableException::class)
-    fun accountUnavailable(exception: AccountUnavailableException): ResponseEntity<ErrorResponse> {
-        recordError(exception, HttpStatus.FORBIDDEN)
+    fun accountUnavailable(exception: AccountUnavailableException): ResponseEntity<ProblemDetail> {
+        recordError(exception, HttpStatus.FORBIDDEN, "ACCOUNT_UNAVAILABLE")
         return error(HttpStatus.FORBIDDEN, "ACCOUNT_UNAVAILABLE", "User account is unavailable")
     }
 
     @ExceptionHandler(InvalidAccountLinkCredentialsException::class)
-    fun invalidAccountLinkCredentials(exception: InvalidAccountLinkCredentialsException): ResponseEntity<ErrorResponse> {
-        recordError(exception, HttpStatus.UNAUTHORIZED)
+    fun invalidAccountLinkCredentials(exception: InvalidAccountLinkCredentialsException): ResponseEntity<ProblemDetail> {
+        recordError(exception, HttpStatus.UNAUTHORIZED, "INVALID_ACCOUNT_LINK_CREDENTIALS")
         return error(HttpStatus.UNAUTHORIZED, "INVALID_ACCOUNT_LINK_CREDENTIALS", "Local account credentials are invalid")
     }
 
     @ExceptionHandler(FirebaseAccountLinkMismatchException::class)
-    fun firebaseAccountLinkMismatch(exception: FirebaseAccountLinkMismatchException): ResponseEntity<ErrorResponse> {
-        recordError(exception, HttpStatus.CONFLICT)
+    fun firebaseAccountLinkMismatch(exception: FirebaseAccountLinkMismatchException): ResponseEntity<ProblemDetail> {
+        recordError(exception, HttpStatus.CONFLICT, "FIREBASE_ACCOUNT_LINK_MISMATCH")
         return error(HttpStatus.CONFLICT, "FIREBASE_ACCOUNT_LINK_MISMATCH", "Firebase email does not match the account being linked")
     }
 
     @ExceptionHandler(FederatedIdentityConflictException::class)
-    fun federatedIdentityConflict(exception: FederatedIdentityConflictException): ResponseEntity<ErrorResponse> {
-        recordError(exception, HttpStatus.CONFLICT)
+    fun federatedIdentityConflict(exception: FederatedIdentityConflictException): ResponseEntity<ProblemDetail> {
+        recordError(exception, HttpStatus.CONFLICT, "FEDERATED_IDENTITY_CONFLICT")
         return error(HttpStatus.CONFLICT, "FEDERATED_IDENTITY_CONFLICT", "Firebase identity is already linked to another account")
     }
 
     @ExceptionHandler(InvalidFirebaseTokenException::class)
-    fun invalidFirebaseToken(exception: InvalidFirebaseTokenException): ResponseEntity<ErrorResponse> {
-        recordError(exception, HttpStatus.UNAUTHORIZED)
+    fun invalidFirebaseToken(exception: InvalidFirebaseTokenException): ResponseEntity<ProblemDetail> {
+        recordError(exception, HttpStatus.UNAUTHORIZED, "INVALID_FIREBASE_TOKEN")
         return error(HttpStatus.UNAUTHORIZED, "INVALID_FIREBASE_TOKEN", "Firebase ID token is invalid")
     }
 
     @ExceptionHandler(VerifiedFirebaseEmailRequiredException::class)
-    fun verifiedEmailRequired(exception: VerifiedFirebaseEmailRequiredException): ResponseEntity<ErrorResponse> {
-        recordError(exception, HttpStatus.UNPROCESSABLE_ENTITY)
+    fun verifiedEmailRequired(exception: VerifiedFirebaseEmailRequiredException): ResponseEntity<ProblemDetail> {
+        recordError(exception, HttpStatus.UNPROCESSABLE_ENTITY, "VERIFIED_FIREBASE_EMAIL_REQUIRED")
         return error(HttpStatus.UNPROCESSABLE_ENTITY, "VERIFIED_FIREBASE_EMAIL_REQUIRED", "A verified Firebase email is required")
     }
 
     @ExceptionHandler(FirebaseUnavailableException::class)
-    fun firebaseUnavailable(exception: FirebaseUnavailableException): ResponseEntity<ErrorResponse> {
-        recordError(exception, HttpStatus.SERVICE_UNAVAILABLE)
+    fun firebaseUnavailable(exception: FirebaseUnavailableException): ResponseEntity<ProblemDetail> {
+        recordError(exception, HttpStatus.SERVICE_UNAVAILABLE, "FIREBASE_UNAVAILABLE")
         return error(HttpStatus.SERVICE_UNAVAILABLE, "FIREBASE_UNAVAILABLE", "Firebase authentication is unavailable")
     }
 
@@ -152,16 +151,18 @@ class AuthExceptionHandler(
      * marca o span e loga com stack trace
      */
     @ExceptionHandler(Exception::class)
-    fun unhandled(exception: Exception): ResponseEntity<ErrorResponse> {
+    fun unhandled(exception: Exception): ResponseEntity<ProblemDetail> {
         if (exception is SpringErrorResponse) {
             val status = HttpStatus.valueOf(exception.statusCode.value())
-            recordError(exception, status)
+            recordError(exception, status, "REQUEST_ERROR")
             return error(status, "REQUEST_ERROR", "The request could not be processed")
         }
-        recordError(exception, HttpStatus.INTERNAL_SERVER_ERROR)
+        recordError(exception, HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR")
         return error(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "An unexpected internal error occurred")
     }
 
-    private fun error(status: HttpStatus, code: String, message: String): ResponseEntity<ErrorResponse> =
-        ResponseEntity.status(status).body(ErrorResponse(status = code, message = message, errors = null))
+    private fun error(status: HttpStatus, code: String, message: String,
+        properties: Map<String, Any> = emptyMap()): ResponseEntity<ProblemDetail> =
+        ResponseEntity.status(status).body(factory.create(status, message, code,
+            properties + mapOf("code" to code, "message" to message), request))
 }

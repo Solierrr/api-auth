@@ -8,6 +8,7 @@ import java.util.UUID
 
 class AuthUser private constructor(
     val id: UUID,
+    val sessionId: UUID?,
     private val email: String,
     private val passwordHash: String,
     private val status: AccountStatus,
@@ -27,10 +28,11 @@ class AuthUser private constructor(
     companion object {
         fun fromLocalCredential(user: UserAccount): AuthUser = from(user, user.localCredential?.passwordHash.orEmpty())
 
-        fun fromBearerToken(user: UserAccount): AuthUser = from(user, "")
+        fun fromBearerToken(user: UserAccount, sessionId: UUID? = null): AuthUser = from(user, "", sessionId)
 
-        private fun from(user: UserAccount, passwordHash: String): AuthUser = AuthUser(
+        private fun from(user: UserAccount, passwordHash: String, sessionId: UUID? = null): AuthUser = AuthUser(
             id = requireNotNull(user.id),
+            sessionId = sessionId,
             email = user.primaryEmail,
             passwordHash = passwordHash,
             status = user.status,

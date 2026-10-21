@@ -23,7 +23,8 @@ class AuthServiceImpl(
     private val userService: UserService,
     private val refreshTokenService: RefreshTokenService,
     private val authSessionIssuer: AuthSessionIssuer,
-    private val authenticationAttemptService: AuthenticationAttemptService
+    private val authenticationAttemptService: AuthenticationAttemptService,
+    private val mobileEligibility: com.solaria.auth.mobile.MobileEligibilityService
 ) : AuthService {
     override fun register(email: String, password: String): UserAccount = userService.create(email, password)
 
@@ -39,12 +40,17 @@ class AuthServiceImpl(
         return createSession(user, ip, userAgent, device)
     }
 
+    @Transactional(noRollbackFor = [com.solaria.auth.service.RefreshTokenReuseException::class])
     override fun refresh(refreshToken: String, ip: String?, userAgent: String?, device: String?): AuthSession {
         val rotatedToken = refreshTokenService.rotate(refreshToken)
         val session = requireNotNull(rotatedToken.entity.session)
         val user = requireNotNull(session.user)
         if (user.status != AccountStatus.ACTIVE || user.lockedUntil?.isAfter(Instant.now()) == true) {
             throw AccountUnavailableException()
+        }
+        if (session.context == "professional") {
+            if (user.emailVerifiedAt == null) throw AccountUnavailableException()
+            mobileEligibility.requireEligible(requireNotNull(user.id))
         }
         return authSessionIssuer.resume(user, session, rotatedToken.value)
     }
