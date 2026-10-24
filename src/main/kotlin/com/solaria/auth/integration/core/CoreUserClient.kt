@@ -12,7 +12,6 @@ class CoreIntegrationException(message: String, cause: Throwable? = null) :
     RuntimeException(message, cause)
 
 // Cliente do endpoint interno POST /internal/users em api-core.
-// /internal/** é rota de rede interna sem auth
 @Component
 class CoreUserClient(
     private val restClient: RestClient
