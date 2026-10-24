@@ -1,5 +1,22 @@
 # Changelog
 
+## [3.2.0](https://github.com/Solierrr/api-auth/compare/v3.1.0...v3.2.0) (2026-10-24)
+
+
+### Features
+
+* add mobile authorization with deeplink and pkce to main ([#51](https://github.com/Solierrr/api-auth/issues/51)) ([d400a06](https://github.com/Solierrr/api-auth/commit/d400a063d273e758745d80e7c8a9753817e37efa))
+* add the local run commands ([cc5bc48](https://github.com/Solierrr/api-auth/commit/cc5bc485ff3246fc7eb2402eeb8cdfd68204e052))
+* send the service key to the api-core ([#62](https://github.com/Solierrr/api-auth/issues/62)) ([999c0ef](https://github.com/Solierrr/api-auth/commit/999c0ef17c98bc3e80b81a629b1204f0da67b25f))
+
+
+### Bug Fixes
+
+* authenticate the redis connection of the outbox with the upstash credentials ([#54](https://github.com/Solierrr/api-auth/issues/54)) ([024d9c3](https://github.com/Solierrr/api-auth/commit/024d9c3422b6c50d3b88fb8d6dc07ea2c5ddaea7))
+* call the api-core with the simple http client to avoid the cancelled requests ([#56](https://github.com/Solierrr/api-auth/issues/56)) ([a48bebf](https://github.com/Solierrr/api-auth/commit/a48bebf54c3413c332acd97e7ad01c1244af28e4))
+* fall back to the own service key name ([#63](https://github.com/Solierrr/api-auth/issues/63)) ([69924da](https://github.com/Solierrr/api-auth/commit/69924da4fe507d6e4dd0b046b51bb23d03091b75))
+* use the springdoc release compatible with spring boot 4.1 ([#52](https://github.com/Solierrr/api-auth/issues/52)) ([1ddc2f3](https://github.com/Solierrr/api-auth/commit/1ddc2f39919e7a46ee840f0a3509165d2619bb96))
+
 ## [3.1.0](https://github.com/Solierrr/api-auth/compare/v3.0.1...v3.1.0) (2026-10-02)
 
 
