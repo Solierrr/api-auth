@@ -14,5 +14,7 @@ data class CoreClientProperties(
     val connectTimeout: Duration,
 
     // timeout de leitura da chamada HTTP a api-core
-    val readTimeout: Duration
+    val readTimeout: Duration,
+
+    val serviceKey: String = ""
 )
