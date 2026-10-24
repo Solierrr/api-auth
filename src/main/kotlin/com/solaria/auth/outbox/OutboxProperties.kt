@@ -28,5 +28,7 @@ data class OutboxProperties(
     val visibilityTimeoutMs: Long,
 
     // intervalo entre execuções do OutboxDeadLetterReclaimer
-    val reclaimIntervalMs: Long
+    val reclaimIntervalMs: Long,
+
+    val streamMaxlen: Long
 )

@@ -1,6 +1,7 @@
 package com.solaria.auth.outbox
 
 import com.solaria.auth.entity.OutboxEvent
+import org.springframework.data.redis.connection.RedisStreamCommands.XAddOptions
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.stereotype.Component
 import java.time.format.DateTimeFormatter
@@ -23,6 +24,10 @@ class OutboxStreamPublisher(
             "createdAt" to DateTimeFormatter.ISO_INSTANT.format(event.createdAt)
         )
         // adiciona evento na stream configurada (XADD)
-        redisTemplate.opsForStream<String, String>().add(properties.streamKey, fields)
+        redisTemplate.opsForStream<String, String>().add(
+            properties.streamKey,
+            fields,
+            XAddOptions.maxlen(properties.streamMaxlen).approximateTrimming(true)
+        )
     }
 }
