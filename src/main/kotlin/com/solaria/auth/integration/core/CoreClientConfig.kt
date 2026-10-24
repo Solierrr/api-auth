@@ -30,6 +30,7 @@ class CoreClientConfig {
             .baseUrl(properties.baseUrl)
             .requestFactory(requestFactory)
             .observationRegistry(observationRegistry)
+            .apply { if (properties.serviceKey.isNotBlank()) it.defaultHeader("X-Service-Key", properties.serviceKey) }
             .build()
     }
 }
