@@ -73,7 +73,7 @@ class EmailCredentialService(
         val found = users.findById(userId).orElseThrow()
         val user = users.findByPrimaryEmailForUpdate(found.primaryEmail) ?: throw AccountUnavailableException()
         val credential = user.localCredential ?: throw MobileFlowException("LOCAL_CREDENTIAL_REQUIRED")
-        if (!passwords.matches(current, credential.passwordHash)) throw MobileFlowException("INVALID_CREDENTIAL", HttpStatus.UNAUTHORIZED)
+        if (!passwords.matches(current, credential.passwordHash)) throw MobileFlowException("INVALID_CREDENTIALS", HttpStatus.UNAUTHORIZED)
         credential.passwordHash = requireNotNull(passwords.encode(password))
         credential.passwordChangedAt = Instant.now()
         credential.updatedAt = Instant.now()
