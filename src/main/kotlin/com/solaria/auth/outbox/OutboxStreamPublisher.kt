@@ -1,6 +1,7 @@
 package com.solaria.auth.outbox
 
 import com.solaria.auth.entity.OutboxEvent
+import org.springframework.data.redis.connection.RedisStreamCommands.TrimOptions
 import org.springframework.data.redis.connection.RedisStreamCommands.XAddOptions
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.stereotype.Component
@@ -27,7 +28,7 @@ class OutboxStreamPublisher(
         redisTemplate.opsForStream<String, String>().add(
             properties.streamKey,
             fields,
-            XAddOptions.maxlen(properties.streamMaxlen).approximateTrimming(true)
+            XAddOptions.trim(TrimOptions.maxLen(properties.streamMaxlen).approximate())
         )
     }
 }

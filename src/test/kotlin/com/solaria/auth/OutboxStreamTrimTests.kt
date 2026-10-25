@@ -11,6 +11,8 @@ import org.mockito.ArgumentMatchers.anyMap
 import org.mockito.ArgumentMatchers.eq
 import org.mockito.Mockito
 import org.springframework.data.domain.Range
+import org.springframework.data.redis.connection.RedisStreamCommands.MaxLenTrimStrategy
+import org.springframework.data.redis.connection.RedisStreamCommands.TrimOperator
 import org.springframework.data.redis.connection.RedisStreamCommands.XAddOptions
 import org.springframework.data.redis.connection.stream.Consumer
 import org.springframework.data.redis.connection.stream.PendingMessage
@@ -21,7 +23,6 @@ import org.springframework.data.redis.core.StringRedisTemplate
 import java.time.Duration
 import java.util.UUID
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 class OutboxStreamTrimTests {
     private val properties = OutboxProperties(
@@ -45,8 +46,9 @@ class OutboxStreamTrimTests {
     private fun assertApproximateTrim(streamKey: String) {
         val options = ArgumentCaptor.forClass(XAddOptions::class.java)
         Mockito.verify(ops).add(eq(streamKey), anyMap(), options.capture())
-        assertEquals(1234L, options.value.maxlen)
-        assertTrue(options.value.isApproximateTrimming)
+        val trim = requireNotNull(options.value.trimOptions)
+        assertEquals(1234L, (trim.trimStrategy as MaxLenTrimStrategy).threshold())
+        assertEquals(TrimOperator.APPROXIMATE, trim.trimOperator)
     }
 
     @Test
