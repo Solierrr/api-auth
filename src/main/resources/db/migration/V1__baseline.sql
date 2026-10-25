@@ -262,3 +262,17 @@ CREATE INDEX idx_outbox_event_pending
     ON outbox_event (created_at) WHERE published_at IS NULL;
 CREATE INDEX idx_mobile_auth_transaction_expires
     ON mobile_auth_transaction (expires_at);
+
+CREATE SCHEMA export;
+
+CREATE VIEW export.auth_user AS
+SELECT id, status, email_verified_at, created_at, updated_at
+FROM public.auth_user;
+
+CREATE VIEW export.federated_identity AS
+SELECT id, auth_user_id, authority, created_at, updated_at
+FROM public.federated_identity;
+
+CREATE VIEW export.federated_provider_link AS
+SELECT id, federated_identity_id, provider, linked_at, created_at, updated_at
+FROM public.federated_provider_link;
