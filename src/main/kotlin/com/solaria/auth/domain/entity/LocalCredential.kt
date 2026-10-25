@@ -15,12 +15,12 @@ import java.util.UUID
 @Table(name = "local_credential")
 class LocalCredential(
     @Id
-    @Column(name = "user_id")
+    @Column(name = "auth_user_id")
     var userId: UUID? = null,
 
     @MapsId
     @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "auth_user_id", nullable = false)
     var user: UserAccount? = null,
 
     @Column(name = "password_hash", nullable = false, length = 255)
@@ -29,7 +29,7 @@ class LocalCredential(
     @Column(name = "password_changed_at", nullable = false)
     var passwordChangedAt: Instant = Instant.now(),
 
-    @Column(name = "must_change", nullable = false)
+    @Column(name = "is_password_change_required", nullable = false)
     var mustChange: Boolean = false,
 
     @Column(name = "created_at", nullable = false)

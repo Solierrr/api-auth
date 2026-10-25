@@ -25,19 +25,18 @@ class SecurityEvent(
     var id: UUID? = null,
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
+    @JoinColumn(name = "auth_user_id")
     var user: UserAccount? = null,
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "session_id")
+    @JoinColumn(name = "auth_session_id")
     var session: Session? = null,
 
     @Enumerated(EnumType.STRING)
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(name = "event_type", nullable = false, columnDefinition = "security_event_type")
+    @Column(name = "event_type", nullable = false, length = 32)
     var eventType: SecurityEventType = SecurityEventType.LOGIN_SUCCEEDED,
 
-    @Column(nullable = false)
+    @Column(name = "is_successful", nullable = false)
     var succeeded: Boolean = true,
 
     @Column(name = "ip_address", length = 45)
