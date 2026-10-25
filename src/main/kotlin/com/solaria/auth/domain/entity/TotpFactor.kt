@@ -12,8 +12,6 @@ import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.OneToOne
 import jakarta.persistence.Table
-import org.hibernate.annotations.JdbcTypeCode
-import org.hibernate.type.SqlTypes
 import java.time.Instant
 import java.util.UUID
 
@@ -25,7 +23,7 @@ class TotpFactor(
     var id: UUID? = null,
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false, unique = true)
+    @JoinColumn(name = "auth_user_id", nullable = false, unique = true)
     var user: UserAccount? = null,
 
     @Column(name = "secret_ciphertext", nullable = false)
@@ -38,8 +36,7 @@ class TotpFactor(
     var encryptionKeyId: String = "",
 
     @Enumerated(EnumType.STRING)
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(nullable = false, columnDefinition = "otp_algorithm")
+    @Column(nullable = false, length = 16)
     var algorithm: TotpAlgorithm = TotpAlgorithm.SHA1,
 
     @Column(nullable = false)

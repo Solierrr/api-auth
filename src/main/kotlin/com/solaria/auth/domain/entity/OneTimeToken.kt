@@ -12,8 +12,6 @@ import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
-import org.hibernate.annotations.JdbcTypeCode
-import org.hibernate.type.SqlTypes
 import java.time.Instant
 import java.util.UUID
 
@@ -25,15 +23,14 @@ class OneTimeToken(
     var id: UUID? = null,
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "auth_user_id", nullable = false)
     var user: UserAccount? = null,
 
     @Column(name = "token_hash", nullable = false, unique = true)
     var tokenHash: ByteArray = byteArrayOf(),
 
     @Enumerated(EnumType.STRING)
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(nullable = false, columnDefinition = "one_time_token_type")
+    @Column(nullable = false, length = 24)
     var type: OneTimeTokenType = OneTimeTokenType.EMAIL_VERIFICATION,
 
     @Column(name = "expires_at", nullable = false)

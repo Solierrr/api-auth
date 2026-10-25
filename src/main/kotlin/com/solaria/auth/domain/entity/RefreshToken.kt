@@ -20,7 +20,7 @@ class RefreshToken(
     var id: UUID? = null,
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "session_id", nullable = false)
+    @JoinColumn(name = "auth_session_id", nullable = false)
     var session: Session? = null,
 
     @Column(name = "token_hash", nullable = false, unique = true)
@@ -33,7 +33,7 @@ class RefreshToken(
     var revokedAt: Instant? = null,
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "replaced_by_id")
+    @JoinColumn(name = "replaced_by_refresh_token_id")
     var replacedBy: RefreshToken? = null,
 
     @Column(name = "expires_at", nullable = false)

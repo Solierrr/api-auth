@@ -22,7 +22,7 @@ class Session(
     var id: UUID? = null,
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "auth_user_id", nullable = false)
     var user: UserAccount? = null,
 
     @Column(name = "ip_address", length = 45)

@@ -20,7 +20,7 @@ class FederatedIdentity(
     var id: UUID? = null,
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "auth_user_id", nullable = false)
     var user: UserAccount? = null,
 
     @Column(nullable = false, length = 30)
@@ -35,7 +35,7 @@ class FederatedIdentity(
     @Column(columnDefinition = "citext")
     var email: String? = null,
 
-    @Column(name = "email_verified", nullable = false)
+    @Column(name = "is_email_verified", nullable = false)
     var emailVerified: Boolean = false,
 
     @Column(name = "created_at", nullable = false)
