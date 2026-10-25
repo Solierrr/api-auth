@@ -5,6 +5,7 @@ import io.micrometer.observation.ObservationRegistry
 import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.data.domain.Range
+import org.springframework.data.redis.connection.RedisStreamCommands.TrimOptions
 import org.springframework.data.redis.connection.RedisStreamCommands.XAddOptions
 import org.springframework.data.redis.connection.RedisStreamCommands.XClaimOptions
 import org.springframework.data.redis.connection.stream.PendingMessage
@@ -89,7 +90,7 @@ class OutboxDeadLetterReclaimer(
                 "originalRecordId" to message.idAsString,
                 "totalDeliveryCount" to message.totalDeliveryCount.toString()
             ),
-            XAddOptions.maxlen(properties.streamMaxlen).approximateTrimming(true)
+            XAddOptions.trim(TrimOptions.maxLen(properties.streamMaxlen).approximate())
         )
         // remove a entrada original da lista de pendentes do grupo, já que foi "resolvida" (via DLQ)
         ops.acknowledge(properties.streamKey, properties.consumerGroup, message.idAsString)
