@@ -15,7 +15,7 @@ O `api-auth` segue uma arquitetura em camadas típica de um serviço Spring Boot
 - **Outbox assíncrono sobre Redis Streams**, `OutboxPollingScheduler` lê a tabela `outbox_event` (Postgres) e publica na stream configurada (`OutboxStreamPublisher`); `OutboxDeadLetterReclaimer` reclama mensagens não confirmadas (visibility timeout) e move entregas que excederam `max-delivery-attempts` para uma stream de dead-letter. A stream e a dead-letter são aparadas no `XADD` por `MAXLEN` aproximado (`OUTBOX_STREAM_MAXLEN`, padrão 10000). O agendamento desses jobs é ligado explicitamente em `SchedulingConfig` (`@EnableScheduling`), já que a aplicação não tem agendamento habilitado por padrão.
 - **Integração service-to-service com `api-core`**, `CoreUserClient` provisiona o usuário definitivo em `POST /internal/users`, autenticado pelo cabeçalho `X-Service-Key` com a chave deste serviço (`SERVICE_KEY`) — o `api-auth` é a fonte da identidade/credencial, o `api-core` é a fonte dos dados de domínio do usuário.
 - **Tokens do Google Calendar por técnico**, `GoogleCalendarTokenController` expõe `GET`, `PUT` e `DELETE` em `/internal/technicians/{technicianId}/google-calendar-token` e `PATCH .../revoke` para o `google-registry`, numa `SecurityFilterChain` própria que exige o cabeçalho `X-Service-Key` (`SERVICE_KEY_GOOGLE_REGISTRY`). Os tokens ficam na tabela `google_calendar_token`, chaveada por `technician_id` e criptografados com AES-256-GCM (`CALENDAR_TOKEN_ENCRYPTION_KEY`, 32 bytes em base64); fora de `CONNECTED` os segredos são apagados e o `GET` responde `404`.
-- **Persistência via JPA/Hibernate + Flyway**, schema versionado em `src/main/resources/db/migration` (`ddl-auto=validate`, nunca `update`), banco Postgres compartilhado com o `api-core` conforme documentado em `.env.example`.
+- **Persistência via JPA/Hibernate + Flyway**, schema versionado em `src/main/resources/db/migration` (`ddl-auto=validate`, nunca `update`), banco Postgres compartilhado com o `api-core` conforme documentado em `.env.example`. O `V1__baseline.sql` é o único dono do DDL do `authdb`, com constraints e índices nomeados (`pk_`, `fk_`, `uq_`, `ck_`, `idx_`). O schema `export` expõe ao pipeline de dados só as views `auth_user`, `federated_identity` e `federated_provider_link`, sem credenciais, tokens, MFA, sessões nem eventos de segurança.
 - **Coleção de testes de API em `http/`**, coleção [Bruno](https://www.usebruno.com/) com requisições locais organizadas por recurso, fora do escopo de testes automatizados (`src/test`).
 
 ```Tree do Repositório
@@ -57,7 +57,7 @@ O `api-auth` segue uma arquitetura em camadas típica de um serviço Spring Boot
 │   │   └── resources/
 │   │       ├── application.properties
 │   │       └── db/migration/
-│   │           └── V1__create_auth_schema.sql
+│   │           └── V1__baseline.sql
 │   └── test/
 │       └── kotlin/com/solaria/auth/
 ├── .dockerignore
