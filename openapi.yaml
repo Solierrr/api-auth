@@ -1,362 +1,1431 @@
-openapi: 3.0.3
+openapi: 3.1.0
 info:
+  contact:
+    name: Solaria
+    url: https://github.com/Solierrr
+  description: "Serviço de login e identidade da Solaria: cria contas, autentica com\
+    \ e-mail e senha ou pelo Firebase, confirma o e-mail, recupera a senha, autoriza\
+    \ o app mobile e emite os tokens JWT (RS256) que os outros serviços validam pelas\
+    \ chaves públicas em /.well-known/jwks.json. As rotas de login, cadastro, renovaç\
+    ão e JWKS são públicas; as demais usam o access token emitido por este serviç\
+    o no cabeçalho Authorization (bearerAuth)."
+  license:
+    name: CC0-1.0
+    url: https://creativecommons.org/publicdomain/zero/1.0/
   title: Solaria — api-auth
-  version: v1
-  description: Autenticação e emissão de tokens. As operações públicas recebem credenciais no corpo da requisição;
-    logout exige um access token de usuário. Este contrato não contém segredos.
+  version: 3.1.0 # x-release-please-version
 servers:
-- url: http://localhost:{port}
-  description: Execução local; ajuste a porta ou substitua o servidor no cliente HTTP.
-  variables:
-    port:
-      default: '8081'
+- description: QA
+  url: https://api-auth-xw6o.onrender.com
+- description: Local
+  url: http://localhost:8081
+security:
+- bearerAuth: []
 tags:
-- name: Autenticação
-  description: Cadastro, login, renovação e encerramento de sessão.
-- name: Chaves públicas
-  description: Publicação das chaves para validação de JWT.
+- description: Autorização do app mobile pela sessão web (PKCE)
+  name: App mobile
+- description: "Cadastro, login com e-mail e senha ou pelo Firebase, renovação e encerramento\
+    \ da sessão"
+  name: Autenticação
+- description: Chaves públicas (JWKS) para os outros serviços validarem os JWTs emitidos
+  name: Chaves públicas
+- description: "Confirmação do e-mail, recuperação, migração e troca de senha"
+  name: Credenciais
+- description: Usuário autenticado e encerramento de sessões
+  name: Sessões
 paths:
   /.well-known/jwks.json:
     get:
+      operationId: getJwks
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: Conjunto de chaves públicas
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Erro interno inesperado
+      security: []
+      summary: Retorna o conjunto de chaves públicas usadas para validar os JWTs
       tags:
       - Chaves públicas
-      operationId: getJwks
-      summary: Consultar chaves públicas JWKS
-      description: Retorna apenas as chaves públicas usadas para verificar os access tokens.
-      security: []
-      responses:
-        '200':
-          description: Conjunto de chaves públicas.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/JwkSet'
-  /auth/register:
+      x-error-codes:
+      - INTERNAL_ERROR
+  /auth/email/verification/confirm:
     post:
-      tags:
-      - Autenticação
-      operationId: register
-      summary: Cadastrar usuário
-      security: []
+      operationId: confirmEmailVerification
       requestBody:
-        required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RegisterRequest'
-      responses:
-        '201':
-          description: Usuário cadastrado.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RegisterResponse'
-        '400':
-          $ref: '#/components/responses/ValidationError'
-        '409':
-          description: E-mail já cadastrado.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /auth/login:
-    post:
-      tags:
-      - Autenticação
-      operationId: login
-      summary: Entrar com e-mail e senha
-      security: []
-      requestBody:
+              $ref: "#/components/schemas/TokenRequest"
         required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/LoginRequest'
       responses:
-        '200':
-          $ref: '#/components/responses/AuthSuccess'
-        '400':
-          $ref: '#/components/responses/ValidationError'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+        "204":
+          description: E-mail confirmado
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Token inválido ou expirado
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Corpo inválido
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Erro interno inesperado
+      security: []
+      summary: Confirma o e-mail com o token recebido
+      tags:
+      - Credenciais
+      x-error-codes:
+      - VALIDATION_FAILED
+      - MALFORMED_REQUEST
+      - INVALID_OR_EXPIRED_TOKEN
+      - INTERNAL_ERROR
+  /auth/email/verification/request:
+    post:
+      description: Não envia nada se o e-mail já está confirmado.
+      operationId: requestEmailVerification
+      parameters:
+      - in: query
+        name: principal
+        required: true
+        schema:
+          $ref: "#/components/schemas/AuthUser"
+      responses:
+        "202":
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+          description: Pedido aceito
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Não autenticado
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Conta indisponível
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Erro interno inesperado
+        "503":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Envio de e-mail não configurado ou indisponível
+      summary: Envia o e-mail de confirmação para o usuário autenticado
+      tags:
+      - Credenciais
+      x-error-codes:
+      - UNAUTHENTICATED
+      - ACCOUNT_UNAVAILABLE
+      - EMAIL_NOT_CONFIGURED
+      - EMAIL_UNAVAILABLE
+      - INTERNAL_ERROR
   /auth/firebase:
     post:
-      tags:
-      - Autenticação
-      operationId: firebaseLogin
-      summary: Entrar com Firebase
-      description: Requer Firebase habilitado na configuração do serviço.
-      security: []
+      description: "Valida o ID token do Firebase e abre uma sessão. Cria a conta\
+        \ no primeiro acesso; se já existe conta local com o mesmo e-mail, exige a\
+        \ vinculação."
+      operationId: loginWithFirebase
       requestBody:
-        required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/FirebaseLoginRequest'
+              $ref: "#/components/schemas/FirebaseLoginRequest"
+        required: true
       responses:
-        '200':
-          $ref: '#/components/responses/AuthSuccess'
-        '400':
-          $ref: '#/components/responses/ValidationError'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '409':
-          description: Conta existente requer vínculo ou identidade já associada.
+        "200":
           content:
             application/json:
               schema:
-                oneOf:
-                - $ref: '#/components/schemas/AccountLinkRequiredResponse'
-                - $ref: '#/components/schemas/ErrorResponse'
-        '422':
-          description: E-mail verificado é necessário.
+                $ref: "#/components/schemas/AuthResponse"
+          description: Sessão aberta
+        "401":
           content:
-            application/json:
+            application/problem+json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '503':
-          description: Firebase indisponível.
+                $ref: "#/components/schemas/ProblemDetail"
+          description: ID token do Firebase inválido
+        "403":
           content:
-            application/json:
+            application/problem+json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Conta indisponível
+        "409":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Vinculação necessária ou identidade já vinculada a outra conta
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Corpo inválido ou e-mail do Firebase não verificado
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Erro interno inesperado
+        "503":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Firebase indisponível
+      security: []
+      summary: Autentica um usuário via Firebase
+      tags:
+      - Autenticação
+      x-error-codes:
+      - VALIDATION_FAILED
+      - MALFORMED_REQUEST
+      - INVALID_FIREBASE_TOKEN
+      - ACCOUNT_UNAVAILABLE
+      - ACCOUNT_LINK_REQUIRED
+      - FEDERATED_IDENTITY_CONFLICT
+      - VERIFIED_FIREBASE_EMAIL_REQUIRED
+      - FIREBASE_UNAVAILABLE
+      - INTERNAL_ERROR
   /auth/firebase/link:
     post:
-      tags:
-      - Autenticação
+      description: "Confere o e-mail e a senha da conta local e o ID token do Firebase,\
+        \ vincula a identidade e abre uma sessão."
       operationId: linkFirebaseAccount
-      summary: Vincular Firebase à conta local
-      description: Requer Firebase habilitado na configuração do serviço.
-      security: []
       requestBody:
-        required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/FirebaseAccountLinkRequest'
+              $ref: "#/components/schemas/FirebaseAccountLinkRequest"
+        required: true
       responses:
-        '200':
-          $ref: '#/components/responses/AuthSuccess'
-        '400':
-          $ref: '#/components/responses/ValidationError'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '409':
-          description: Identidade já vinculada ou e-mail incompatível.
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '503':
-          description: Firebase indisponível.
+                $ref: "#/components/schemas/AuthResponse"
+          description: Conta vinculada e sessão aberta
+        "401":
           content:
-            application/json:
+            application/problem+json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /auth/refresh:
-    post:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Credenciais da conta local ou ID token inválidos
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Conta indisponível
+        "409":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: E-mail do Firebase diferente da conta ou identidade já vinculada
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Corpo inválido ou e-mail do Firebase não verificado
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Erro interno inesperado
+        "503":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Firebase indisponível
+      security: []
+      summary: Vincula uma conta Firebase a uma conta local existente
       tags:
       - Autenticação
-      operationId: refresh
-      summary: Renovar tokens
-      security: []
+      x-error-codes:
+      - VALIDATION_FAILED
+      - MALFORMED_REQUEST
+      - INVALID_FIREBASE_TOKEN
+      - INVALID_ACCOUNT_LINK_CREDENTIALS
+      - ACCOUNT_UNAVAILABLE
+      - FIREBASE_ACCOUNT_LINK_MISMATCH
+      - FEDERATED_IDENTITY_CONFLICT
+      - VERIFIED_FIREBASE_EMAIL_REQUIRED
+      - FIREBASE_UNAVAILABLE
+      - INTERNAL_ERROR
+  /auth/login:
+    post:
+      description: Abre uma sessão web e devolve o access token (JWT) e o refresh
+        token.
+      operationId: login
       requestBody:
-        required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RefreshTokenRequest'
+              $ref: "#/components/schemas/LoginRequest"
+        required: true
       responses:
-        '200':
-          $ref: '#/components/responses/AuthSuccess'
-        '400':
-          $ref: '#/components/responses/ValidationError'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+          description: Sessão aberta
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: "E-mail ou senha inválidos, ou conta bloqueada"
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Corpo inválido
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Erro interno inesperado
+      security: []
+      summary: Autentica um usuário com email e senha
+      tags:
+      - Autenticação
+      x-error-codes:
+      - VALIDATION_FAILED
+      - MALFORMED_REQUEST
+      - INVALID_CREDENTIALS
+      - INTERNAL_ERROR
   /auth/logout:
     post:
+      description: Revoga todos os refresh tokens do usuário.
+      operationId: logout
+      parameters:
+      - in: query
+        name: principal
+        required: true
+        schema:
+          $ref: "#/components/schemas/AuthUser"
+      responses:
+        "204":
+          description: Sessão encerrada
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Não autenticado
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Erro interno inesperado
+      summary: Encerra a sessão do usuário autenticado
       tags:
       - Autenticação
-      operationId: logout
-      summary: Encerrar sessão
-      security:
-      - bearerAuth: []
+      x-error-codes:
+      - UNAUTHENTICATED
+      - INTERNAL_ERROR
+  /auth/me:
+    get:
+      operationId: getCurrentUser
+      parameters:
+      - in: query
+        name: principal
+        required: true
+        schema:
+          $ref: "#/components/schemas/AuthUser"
       responses:
-        '204':
-          description: Sessão encerrada; sem corpo na resposta.
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: Usuário e sessão
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Não autenticado
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Erro interno inesperado
+      summary: Retorna o usuário e a sessão autenticados
+      tags:
+      - Sessões
+      x-error-codes:
+      - UNAUTHENTICATED
+      - INTERNAL_ERROR
+  /auth/mobile/token:
+    post:
+      description: Confere o code_verifier do PKCE e abre a sessão mobile (contexto
+        professional).
+      operationId: redeemMobileToken
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MobileGrant"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSession"
+          description: Sessão mobile aberta
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Código de autorização inválido
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Conta sem permissão para o app
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Corpo ilegível
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Erro interno inesperado
+        "503":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Consulta de elegibilidade indisponível
+      security: []
+      summary: Troca o código de autorização pelos tokens do app
+      tags:
+      - App mobile
+      x-error-codes:
+      - MALFORMED_REQUEST
+      - INVALID_GRANT
+      - MOBILE_ACCOUNT_NOT_ALLOWED
+      - ELIGIBILITY_UNAVAILABLE
+      - INTERNAL_ERROR
+  /auth/mobile/transactions:
+    post:
+      description: "Fluxo com PKCE (S256): devolve a URL da web onde a pessoa entra\
+        \ e confirma o acesso do app."
+      operationId: startMobileAuthorization
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartMobile"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StartedMobile"
+          description: Transação criada
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: "Cliente, redirect ou parâmetros do PKCE inválidos"
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Corpo ilegível
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Erro interno inesperado
+        "503":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Autorização do app não configurada
+      security: []
+      summary: Inicia a autorização do app mobile
+      tags:
+      - App mobile
+      x-error-codes:
+      - MALFORMED_REQUEST
+      - INVALID_CLIENT
+      - INVALID_TRANSACTION
+      - MOBILE_AUTH_NOT_CONFIGURED
+      - INTERNAL_ERROR
+  /auth/mobile/transactions/{id}:
+    delete:
+      operationId: cancelMobileAuthorization
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      - in: query
+        name: principal
+        required: true
+        schema:
+          $ref: "#/components/schemas/AuthUser"
+      responses:
+        "204":
+          description: Transação cancelada
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: "Transação inválida ou expirada, ou sessão web inválida"
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Não autenticado
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Erro interno inesperado
+      summary: Cancela a transação de autorização do app
+      tags:
+      - App mobile
+      x-error-codes:
+      - UNAUTHENTICATED
+      - INVALID_TRANSACTION
+      - TRANSACTION_EXPIRED
+      - INVALID_GRANT
+      - INTERNAL_ERROR
+    get:
+      description: "Usada pela web, com a sessão da pessoa, para mostrar o pedido\
+        \ do app e se a conta pode usá-lo."
+      operationId: getMobileAuthorization
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      - in: query
+        name: principal
+        required: true
+        schema:
+          $ref: "#/components/schemas/AuthUser"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MobileTransactionInfo"
+          description: Dados da transação
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: "Transação inválida ou expirada, ou sessão web inválida"
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Não autenticado
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Erro interno inesperado
+        "503":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Consulta de elegibilidade indisponível
+      summary: Consulta a transação de autorização do app
+      tags:
+      - App mobile
+      x-error-codes:
+      - UNAUTHENTICATED
+      - INVALID_TRANSACTION
+      - TRANSACTION_EXPIRED
+      - INVALID_GRANT
+      - ELIGIBILITY_UNAVAILABLE
+      - INTERNAL_ERROR
+  /auth/mobile/transactions/{id}/authorize:
+    post:
+      description: "Exige confirmação explícita, sessão web, e-mail verificado e conta\
+        \ elegível. Devolve a URL de retorno do app com o código de autorização."
+      operationId: authorizeMobile
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      - in: query
+        name: principal
+        required: true
+        schema:
+          $ref: "#/components/schemas/AuthUser"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MobileConfirmation"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MobileCallback"
+          description: URL de retorno com o código
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: "Transação inválida, expirada ou sem confirmação"
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Não autenticado
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: "Sessão não é web, e-mail não verificado ou conta sem permissã\
+            o para o app"
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Corpo ilegível
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Erro interno inesperado
+        "503":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Consulta de elegibilidade indisponível
+      summary: Autoriza o app mobile
+      tags:
+      - App mobile
+      x-error-codes:
+      - MALFORMED_REQUEST
+      - UNAUTHENTICATED
+      - INVALID_TRANSACTION
+      - TRANSACTION_EXPIRED
+      - INVALID_GRANT
+      - CONFIRMATION_REQUIRED
+      - WEB_SESSION_REQUIRED
+      - EMAIL_NOT_VERIFIED
+      - MOBILE_ACCOUNT_NOT_ALLOWED
+      - ELIGIBILITY_UNAVAILABLE
+      - INTERNAL_ERROR
+  /auth/password/change:
+    post:
+      description: Confere a senha atual e revoga todas as sessões da conta.
+      operationId: changePassword
+      parameters:
+      - in: query
+        name: principal
+        required: true
+        schema:
+          $ref: "#/components/schemas/AuthUser"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordRequest"
+        required: true
+      responses:
+        "204":
+          description: Senha trocada
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Senha fora da política ou conta sem senha local
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Não autenticado ou senha atual incorreta
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Conta indisponível
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Corpo ilegível
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Erro interno inesperado
+      summary: Troca a senha do usuário autenticado
+      tags:
+      - Credenciais
+      x-error-codes:
+      - MALFORMED_REQUEST
+      - UNAUTHENTICATED
+      - INVALID_CREDENTIALS
+      - PASSWORD_POLICY
+      - LOCAL_CREDENTIAL_REQUIRED
+      - ACCOUNT_UNAVAILABLE
+      - INTERNAL_ERROR
+  /auth/password/migrate:
+    post:
+      description: "Exige um ID token do Firebase do provedor password, com e-mail\
+        \ verificado e vinculado à conta autenticada. Revoga todas as sessões da conta."
+      operationId: migrateFirebasePassword
+      parameters:
+      - in: query
+        name: principal
+        required: true
+        schema:
+          $ref: "#/components/schemas/AuthUser"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MigratePasswordRequest"
+        required: true
+      responses:
+        "204":
+          description: Senha local criada
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: "Senha fora da política, prova de identidade ausente ou migraç\
+            ão não permitida"
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Não autenticado ou ID token do Firebase inválido
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Conta indisponível
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Corpo ilegível
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Erro interno inesperado
+        "503":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Firebase indisponível
+      summary: Cria a senha local de uma conta que entrava pelo Firebase com e-mail
+        e senha
+      tags:
+      - Credenciais
+      x-error-codes:
+      - MALFORMED_REQUEST
+      - UNAUTHENTICATED
+      - PASSWORD_POLICY
+      - IDENTITY_PROOF_REQUIRED
+      - MIGRATION_NOT_ALLOWED
+      - INVALID_FIREBASE_TOKEN
+      - ACCOUNT_UNAVAILABLE
+      - FIREBASE_UNAVAILABLE
+      - INTERNAL_ERROR
+  /auth/password/reset/confirm:
+    post:
+      description: Revoga todas as sessões da conta.
+      operationId: confirmPasswordReset
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResetPasswordRequest"
+        required: true
+      responses:
+        "204":
+          description: Senha redefinida
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: "Token inválido ou expirado, ou senha fora da política"
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Corpo ilegível
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Erro interno inesperado
+      security: []
+      summary: Redefine a senha com o token recebido
+      tags:
+      - Credenciais
+      x-error-codes:
+      - MALFORMED_REQUEST
+      - PASSWORD_POLICY
+      - INVALID_OR_EXPIRED_TOKEN
+      - INTERNAL_ERROR
+  /auth/password/reset/request:
+    post:
+      description: "Responde 202 mesmo quando o e-mail não existe ou não tem senha\
+        \ local, para não revelar contas."
+      operationId: requestPasswordReset
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmailRequest"
+        required: true
+      responses:
+        "202":
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+          description: Pedido aceito
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Corpo inválido
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Erro interno inesperado
+        "503":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Envio de e-mail não configurado ou indisponível
+      security: []
+      summary: Envia o e-mail de redefinição de senha
+      tags:
+      - Credenciais
+      x-error-codes:
+      - VALIDATION_FAILED
+      - MALFORMED_REQUEST
+      - EMAIL_NOT_CONFIGURED
+      - EMAIL_UNAVAILABLE
+      - INTERNAL_ERROR
+  /auth/refresh:
+    post:
+      description: Troca o refresh token por um novo par (rotação a cada uso). O reuso
+        de um refresh token já trocado revoga a sessão.
+      operationId: refreshToken
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshTokenRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+          description: Tokens renovados
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Refresh token inválido ou reutilizado
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Conta indisponível ou sem permissão para o app
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Corpo inválido
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Erro interno inesperado
+        "503":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Consulta de elegibilidade do app indisponível
+      security: []
+      summary: Gera um novo access token a partir do refresh token
+      tags:
+      - Autenticação
+      x-error-codes:
+      - VALIDATION_FAILED
+      - MALFORMED_REQUEST
+      - INVALID_REFRESH_TOKEN
+      - REFRESH_TOKEN_REUSED
+      - ACCOUNT_UNAVAILABLE
+      - MOBILE_ACCOUNT_NOT_ALLOWED
+      - ELIGIBILITY_UNAVAILABLE
+      - INTERNAL_ERROR
+  /auth/register:
+    post:
+      description: "Cria a conta com e-mail e senha local (12 a 72 bytes). O perfil\
+        \ no api-core é criado em seguida, por evento."
+      operationId: register
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegisterResponse"
+          description: Conta criada
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Senha fora da política
+        "409":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: E-mail já cadastrado
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Corpo inválido
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Erro interno inesperado
+      security: []
+      summary: Registra um novo usuário
+      tags:
+      - Autenticação
+      x-error-codes:
+      - VALIDATION_FAILED
+      - MALFORMED_REQUEST
+      - PASSWORD_POLICY
+      - EMAIL_ALREADY_REGISTERED
+      - INTERNAL_ERROR
+  /auth/sessions/current/logout:
+    post:
+      operationId: logoutCurrentSession
+      parameters:
+      - in: query
+        name: principal
+        required: true
+        schema:
+          $ref: "#/components/schemas/AuthUser"
+      responses:
+        "204":
+          description: Sessão encerrada
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Não autenticado ou sessão de outro usuário
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Erro interno inesperado
+      summary: Encerra só a sessão atual
+      tags:
+      - Sessões
+      x-error-codes:
+      - UNAUTHENTICATED
+      - INVALID_SESSION
+      - INTERNAL_ERROR
+  /auth/sessions/logout-all:
+    post:
+      operationId: logoutAllSessions
+      parameters:
+      - in: query
+        name: principal
+        required: true
+        schema:
+          $ref: "#/components/schemas/AuthUser"
+      responses:
+        "204":
+          description: Sessões encerradas
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Não autenticado
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Erro interno inesperado
+      summary: Encerra todas as sessões do usuário
+      tags:
+      - Sessões
+      x-error-codes:
+      - UNAUTHENTICATED
+      - INTERNAL_ERROR
 components:
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-      description: Access token de usuário emitido por login, Firebase ou refresh.
-  responses:
-    AuthSuccess:
-      description: Tokens emitidos.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/AuthResponse'
-    ValidationError:
-      description: Corpo inválido.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-    Unauthorized:
-      description: Credencial inválida ou ausente.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
   schemas:
-    RegisterRequest:
-      type: object
-      required:
-      - email
-      - password
-      properties:
-        email:
-          type: string
-          format: email
-        password:
-          type: string
-          format: password
-          minLength: 12
-          maxLength: 72
-    LoginRequest:
-      type: object
-      required:
-      - email
-      - password
-      properties:
-        email:
-          type: string
-          format: email
-          maxLength: 320
-        password:
-          type: string
-          format: password
-          maxLength: 72
-    FirebaseLoginRequest:
-      type: object
-      required:
-      - idToken
-      properties:
-        idToken:
-          type: string
-          maxLength: 10000
-          description: Firebase ID token fornecido pelo cliente.
-        device:
-          type: string
-          maxLength: 255
-          nullable: true
-    FirebaseAccountLinkRequest:
-      type: object
-      required:
-      - email
-      - password
-      - idToken
-      properties:
-        email:
-          type: string
-          format: email
-          maxLength: 320
-        password:
-          type: string
-          format: password
-          maxLength: 72
-        idToken:
-          type: string
-          maxLength: 10000
-        device:
-          type: string
-          maxLength: 255
-          nullable: true
-    RefreshTokenRequest:
-      type: object
-      required:
-      - refreshToken
-      properties:
-        refreshToken:
-          type: string
-          maxLength: 128
     AuthResponse:
       type: object
-      required:
-      - accessToken
-      - refreshToken
-      - accessTokenExpiresAt
-      - userId
-      - email
       properties:
         accessToken:
-          type: string
-        refreshToken:
           type: string
         accessTokenExpiresAt:
           type: string
           format: date-time
+        clientId:
+          type: string
+        context:
+          type: string
+        email:
+          type: string
+        refreshToken:
+          type: string
+        sessionId:
+          type:
+          - string
+          - "null"
+          format: uuid
         userId:
           type: string
           format: uuid
+    AuthSession:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        accessTokenExpiresAt:
+          type: string
+          format: date-time
+        clientId:
+          type: string
+        context:
+          type: string
         email:
           type: string
-          format: email
-    RegisterResponse:
+        refreshToken:
+          type: string
+        sessionId:
+          type:
+          - string
+          - "null"
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+    AuthUser:
       type: object
-      required:
-      - id
-      - email
-      - message
       properties:
+        accountNonExpired:
+          type: boolean
+        accountNonLocked:
+          type: boolean
+        authorities:
+          type: array
+          items:
+            $ref: "#/components/schemas/GrantedAuthority"
+        credentialsNonExpired:
+          type: boolean
+        enabled:
+          type: boolean
         id:
           type: string
           format: uuid
+        password:
+          type: string
+        sessionId:
+          type:
+          - string
+          - "null"
+          format: uuid
+        username:
+          type: string
+    ChangePasswordRequest:
+      type: object
+      properties:
+        currentPassword:
+          type: string
+        password:
+          type: string
+    EmailRequest:
+      type: object
+      properties:
         email:
           type: string
           format: email
-        message:
-          type: string
-    ErrorResponse:
-      type: object
+          maxLength: 254
+          minLength: 0
       required:
-      - status
-      - message
+      - email
+    FirebaseAccountLinkRequest:
+      type: object
       properties:
-        status:
+        device:
+          type:
+          - string
+          - "null"
+          maxLength: 255
+          minLength: 0
+        email:
           type: string
-        message:
+          format: email
+          maxLength: 320
+          minLength: 0
+        idToken:
           type: string
-        errors:
+          maxLength: 10000
+          minLength: 0
+        password:
+          type: string
+          maxLength: 72
+          minLength: 0
+      required:
+      - email
+      - idToken
+      - password
+    FirebaseLoginRequest:
+      type: object
+      properties:
+        device:
+          type:
+          - string
+          - "null"
+          maxLength: 255
+          minLength: 0
+        idToken:
+          type: string
+          maxLength: 10000
+          minLength: 0
+      required:
+      - idToken
+    GrantedAuthority:
+      type: object
+      properties:
+        authority:
+          type: string
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 320
+          minLength: 0
+        password:
+          type: string
+          maxLength: 72
+          minLength: 0
+      required:
+      - email
+      - password
+    MigratePasswordRequest:
+      type: object
+      properties:
+        idToken:
+          type: string
+        password:
+          type: string
+    MobileCallback:
+      type: object
+      properties:
+        callbackUrl:
+          type: string
+    MobileConfirmation:
+      type: object
+      properties:
+        confirmed:
+          type: boolean
+    MobileGrant:
+      type: object
+      properties:
+        clientId:
+          type: string
+        code:
+          type: string
+        codeVerifier:
+          type: string
+        redirectUri:
+          type: string
+    MobileTransactionInfo:
+      type: object
+      properties:
+        clientId:
+          type: string
+        eligible:
+          type: boolean
+        email:
+          type: string
+        emailVerified:
+          type: boolean
+        expiresAt:
+          type: string
+          format: date-time
+        reasons:
           type: array
           items:
             type: string
-          nullable: true
-    AccountLinkRequiredResponse:
-      type: object
-      required:
-      - code
-      - message
-      - email
+        transactionId:
+          type: string
+    ProblemDetail:
+      description: "Corpo de todo erro HTTP, no contrato de erro da organização"
       properties:
-        code:
+        detail:
           type: string
-        message:
+          description: Explicação para quem depura; o front não exibe
+          example: Email or password is invalid
+        errorCode:
           type: string
+          description: "Código estável do catálogo de erros, usado pelo front para\
+            \ traduzir a mensagem"
+          example: INVALID_CREDENTIALS
+        errors:
+          type: array
+          description: Erros por campo; presente só em VALIDATION_FAILED
+          items:
+            $ref: "#/components/schemas/ProblemFieldError"
+        instance:
+          type: string
+          description: Caminho da requisição
+          example: /auth/login
+        status:
+          type: integer
+          format: int32
+          description: Código HTTP
+          example: 401
+        timestamp:
+          type: string
+          format: date-time
+          description: "Momento do erro, em UTC"
+          example: 2026-10-24T13:45:00Z
+        title:
+          type: string
+          description: O mesmo valor de errorCode
+          example: INVALID_CREDENTIALS
+        traceId:
+          type: string
+          description: "Id do trace, para cruzar com os logs; presente quando há trace"
+          example: 4bf92f3577b34da6a3ce929d0e0e4736
+        type:
+          type: string
+          description: Sempre about:blank
+          example: about:blank
+      required:
+      - detail
+      - errorCode
+      - instance
+      - status
+      - timestamp
+      - title
+      - type
+    ProblemFieldError:
+      description: Erro de validação de um campo ou parâmetro
+      properties:
+        detail:
+          type: string
+          description: Explicação para quem depura
+          example: must be a well-formed email address
+        errorCode:
+          type: string
+          description: Código do erro do campo
+          example: VALIDATION_FAILED
+        field:
+          type: string
+          description: Campo ou parâmetro inválido
+          example: email
+      required:
+      - detail
+      - errorCode
+      - field
+    RefreshTokenRequest:
+      type: object
+      properties:
+        refreshToken:
+          type: string
+          maxLength: 128
+          minLength: 0
+      required:
+      - refreshToken
+    RegisterRequest:
+      type: object
+      properties:
         email:
           type: string
           format: email
-    JwkSet:
-      type: object
+          minLength: 1
+        password:
+          type: string
+          maxLength: 72
+          minLength: 12
       required:
-      - keys
+      - email
+      - password
+    RegisterResponse:
+      type: object
       properties:
-        keys:
-          type: array
-          items:
-            type: object
-            additionalProperties: true
+        email:
+          type: string
+        id:
+          type: string
+          format: uuid
+        message:
+          type: string
+    ResetPasswordRequest:
+      type: object
+      properties:
+        password:
+          type: string
+        token:
+          type: string
+    StartMobile:
+      type: object
+      properties:
+        clientId:
+          type: string
+        codeChallenge:
+          type: string
+        codeChallengeMethod:
+          type: string
+        redirectUri:
+          type: string
+        state:
+          type: string
+    StartedMobile:
+      type: object
+      properties:
+        authorizationUrl:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        transactionId:
+          type: string
+    TokenRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          maxLength: 43
+          minLength: 43
+  securitySchemes:
+    bearerAuth:
+      bearerFormat: JWT
+      scheme: bearer
+      type: http
