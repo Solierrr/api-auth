@@ -53,6 +53,8 @@ Use sempre o wrapper (`mvnw`/`mvnw.cmd`) em vez de um Maven instalado globalment
 
 Por padrão a aplicação sobe em `SERVER_PORT` (padrão `8081`, ver `application.properties`). Com o serviço no ar, o endpoint `GET /.well-known/jwks.json` é um bom smoke test — não depende de banco além do boot da aplicação e confirma que o keystore JWT foi carregado corretamente.
 
+O Swagger fica em `/docs` e o contrato OpenAPI em `/openapi.json` (YAML em `/openapi.json.yaml`); `DOCS_ENABLED=false` desliga os dois, como em PROD. O `openapi.yaml` da raiz é gerado do código com `make openapi` e o CI confere se ele está atualizado. A prontidão do serviço fica em `/actuator/health/readiness` (banco) e a vida do processo em `/actuator/health/liveness`; o envio de e-mail não entra no health.
+
 ### Testando os endpoints
 
 <p>
