@@ -74,3 +74,9 @@ registrar o header em logs/traces/proxies. Não colocar credenciais no Git ou AP
 
 Remover credencial da lista impede novas sessões; revogar sessões já emitidas pelas
 rotas normais. Rotacionar no servidor e reprovisionar aparelho quando necessário.
+
+## Recuperação de senha e verificação de e-mail
+
+Rotas públicas, chamadas pelo `web-app`: `POST /auth/password/reset/request` (corpo `{email}`) e `POST /auth/password/reset/confirm` (corpo `{token, password}`). A solicitação responde sempre `202 {"status":"REQUEST_ACCEPTED"}`, exista ou não a conta, e só envia e-mail para conta ativa com senha local. O token tem 32 bytes aleatórios (43 caracteres base64url), só o hash SHA-256 fica em `one_time_token`, vale 30 minutos e é de uso único. Ao redefinir (senha de 12 a 72 bytes), todas as sessões e refresh tokens do usuário são revogados. A verificação de e-mail usa `POST /auth/email/verification/request` (autenticada) e `POST /auth/email/verification/confirm` (`{token}`, público), com token de 24 horas.
+
+O envio passa pelo `api-email` (`POST /emails`, modelos `password-reset` e `email-verification`, cabeçalho `X-API-Key`). Configure `EMAIL_SERVICE_URL` (ou `API_EMAIL_URL`), `EMAIL_SERVICE_API_KEY` (ou `SERVICE_KEY_API_EMAIL`) e os links `AUTH_EMAIL_RESET_URL` e `AUTH_EMAIL_VERIFICATION_URL`, que são as páginas do `web-app` sem o `token`. A origem desses links precisa estar em `EMAIL_ALLOWED_ORIGINS` do `api-email`. Sem URL ou chave do `api-email`, o serviço sobe normalmente, registra um aviso e as rotas de solicitação respondem `503 EMAIL_NOT_CONFIGURED`; falha do `api-email` responde `503 EMAIL_UNAVAILABLE` e nenhum token é gravado. Erros de token respondem `400 INVALID_OR_EXPIRED_TOKEN` e senha fora da política, `400 PASSWORD_POLICY`.
