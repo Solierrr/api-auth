@@ -85,8 +85,8 @@ class FirebaseAuthenticationServiceImpl(
     private companion object {
         val EXPECTED_RACE_CONSTRAINTS = setOf(
             "uq_auth_user_primary_email",
-            "uq_federated_identity_subject",
-            "uq_federated_identity_user_issuer"
+            "uq_federated_identity_issuer_subject",
+            "uq_federated_identity_auth_user_issuer"
         )
     }
 }

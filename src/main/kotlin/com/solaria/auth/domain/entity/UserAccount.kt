@@ -13,8 +13,6 @@ import jakarta.persistence.Id
 import jakarta.persistence.OneToMany
 import jakarta.persistence.OneToOne
 import jakarta.persistence.Table
-import org.hibernate.annotations.JdbcTypeCode
-import org.hibernate.type.SqlTypes
 import java.time.Instant
 import java.util.UUID
 
@@ -32,8 +30,7 @@ class UserAccount(
     var emailVerifiedAt: Instant? = null,
 
     @Enumerated(EnumType.STRING)
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(nullable = false, columnDefinition = "account_status")
+    @Column(nullable = false, length = 16)
     var status: AccountStatus = AccountStatus.ACTIVE,
 
     @Column(name = "failed_login_attempts", nullable = false)

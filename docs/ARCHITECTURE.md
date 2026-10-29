@@ -56,7 +56,7 @@ O `api-auth` segue uma arquitetura em camadas típica de um serviço Spring Boot
 │   │   └── resources/
 │   │       ├── application.properties
 │   │       └── db/migration/
-│   │           └── V1__create_auth_schema.sql
+│   │           └── V1__baseline.sql
 │   └── test/
 │       └── kotlin/com/solaria/auth/
 ├── .dockerignore
