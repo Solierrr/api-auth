@@ -110,19 +110,14 @@ class MobileAuthorizationService(
         val user = users.findById(requireNotNull(transaction.userId)).orElse(null) ?: invalidGrant()
         if (user.status != AccountStatus.ACTIVE || user.emailVerifiedAt == null || user.lockedUntil?.isAfter(Instant.now()) == true) invalidGrant()
         eligibility.requireEligible(requireNotNull(user.id))
-        val result = issueSession(user, webSession.authenticationMethods, ip, userAgent)
-        transaction.status = "CONSUMED"
-        transaction.consumedAt = Instant.now()
-        transactions.save(transaction)
-        return result
-    }
-
-    fun issueSession(user: com.solaria.auth.entity.UserAccount, methods: Array<String>, ip: String?, userAgent: String?): AuthSession {
-        val mobileSession = sessionService.create(user, methods, ip, userAgent, "mobile")
-        mobileSession.clientId = clientId
+        val mobileSession = sessionService.create(user, webSession.authenticationMethods, ip, userAgent, "mobile")
+        mobileSession.clientId = transaction.clientId
         mobileSession.context = "professional"
         sessions.save(mobileSession)
         val refresh = refreshTokens.issue(mobileSession)
+        transaction.status = "CONSUMED"
+        transaction.consumedAt = Instant.now()
+        transactions.save(transaction)
         return issuer.resume(user, mobileSession, refresh.value)
     }
 

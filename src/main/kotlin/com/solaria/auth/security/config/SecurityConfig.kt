@@ -63,7 +63,6 @@ class SecurityConfig(
                 "/auth/refresh",
                 "/auth/mobile/transactions",
                 "/auth/mobile/token",
-                "/auth/mobile/qa/session",
                 "/auth/email/verification/confirm",
                 "/auth/password/reset/request",
                 "/auth/password/reset/confirm"
@@ -72,6 +71,8 @@ class SecurityConfig(
             // health/info liberados, resto denyAll
             // Endpoint JWKS público
             it.requestMatchers(HttpMethod.GET, "/internal/sessions/*", "/.well-known/jwks.json").permitAll()
+            // Rotas consumidas apenas pela rede interna do cluster.
+            it.requestMatchers("/internal/**").permitAll()
             // Docs OpenAPI/Swagger ficam públicas
             it.requestMatchers(
                 "/v3/api-docs/**",
