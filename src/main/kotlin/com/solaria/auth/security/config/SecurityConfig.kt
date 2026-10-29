@@ -63,6 +63,7 @@ class SecurityConfig(
                 "/auth/refresh",
                 "/auth/mobile/transactions",
                 "/auth/mobile/token",
+                "/auth/mobile/qa/session",
                 "/auth/email/verification/confirm",
                 "/auth/password/reset/request",
                 "/auth/password/reset/confirm"
