@@ -121,6 +121,15 @@ class MobileAuthorizationService(
         return issuer.resume(user, mobileSession, refresh.value)
     }
 
+    fun issueSession(user: com.solaria.auth.entity.UserAccount, methods: Array<String>, ip: String?, userAgent: String?): AuthSession {
+        val mobileSession = sessionService.create(user, methods, ip, userAgent, "mobile")
+        mobileSession.clientId = clientId
+        mobileSession.context = "professional"
+        sessions.save(mobileSession)
+        val refresh = refreshTokens.issue(mobileSession)
+        return issuer.resume(user, mobileSession, refresh.value)
+    }
+
     private fun transaction(id: String): MobileTransaction {
         if (!id.matches(Regex("[A-Za-z0-9_-]{43}"))) throw MobileFlowException("INVALID_TRANSACTION")
         val transaction = transactions.lockById(id) ?: throw MobileFlowException("INVALID_TRANSACTION")
