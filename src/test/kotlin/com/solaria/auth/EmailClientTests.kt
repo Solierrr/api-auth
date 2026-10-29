@@ -6,6 +6,8 @@ import com.solaria.auth.integration.email.EmailDeliveryException
 import com.sun.net.httpserver.HttpServer
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
+import org.springframework.boot.test.context.runner.ApplicationContextRunner
+import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer
 import java.net.InetSocketAddress
 import java.time.Duration
 import java.util.concurrent.atomic.AtomicReference
@@ -70,5 +72,23 @@ class EmailClientTests {
         }
         assertEquals(null, captured.get())
         assertTrue(client().configured)
+    }
+
+    private fun runner() = ApplicationContextRunner()
+        .withInitializer(ConfigDataApplicationContextInitializer())
+        .withUserConfiguration(EmailClient::class.java)
+
+    @Test
+    fun `the environment variables bind to the client, with the shared names as fallback`() {
+        runner().withPropertyValues("EMAIL_SERVICE_URL=http://email.test", "EMAIL_SERVICE_API_KEY=" + "a".repeat(32)).run {
+            assertTrue(it.getBean(EmailClient::class.java).configured)
+        }
+        runner().withPropertyValues("API_EMAIL_URL=http://email.test", "SERVICE_KEY_API_EMAIL=" + "a".repeat(32)).run {
+            assertTrue(it.getBean(EmailClient::class.java).configured)
+        }
+        runner().withPropertyValues("API_EMAIL_URL=http://email.test").run {
+            assertFalse(it.getBean(EmailClient::class.java).configured)
+        }
+        runner().run { assertFalse(it.getBean(EmailClient::class.java).configured) }
     }
 }
