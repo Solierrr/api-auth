@@ -20,10 +20,10 @@ class ProblemDetailAccessDeniedHandler(
 
     override fun handle(request: HttpServletRequest, response: HttpServletResponse, exception: AccessDeniedException) {
         HttpObservationErrors.mark(request, exception)
-        log.atWarn().addKeyValue("errorCode", "ACCESS_DENIED")
+        log.atWarn().addKeyValue("errorCode", "FORBIDDEN")
             .log("403 em {} {}: {}", request.method, request.requestURI, exception.message)
-        val body = factory.create(HttpStatus.FORBIDDEN, "Access is denied", "ACCESS_DENIED",
-            mapOf("code" to "ACCESS_DENIED", "message" to "Access is denied"), request)
+        val body = factory.create(HttpStatus.FORBIDDEN, "Access is denied", "FORBIDDEN",
+            mapOf("code" to "FORBIDDEN", "message" to "Access is denied"), request)
         response.status = HttpStatus.FORBIDDEN.value()
         response.contentType = "application/problem+json"
         response.characterEncoding = "UTF-8"
