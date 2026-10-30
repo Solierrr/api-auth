@@ -27,12 +27,18 @@ import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 
 /**
- * Tratamento centralizado de exceções da API de auth
+ * Centraliza o tratamento de exceções da API de auth e devolve qualquer erro como [ProblemDetail]
  *
- * Observabilidade -> toda exceção tratada é marcada como erro no tracing
- * ([HttpObservationErrors.mark] -> span `ERROR` + tag `exception` em `http.server.requests`
- * `WARN` para 4xx (só mensagem)
- * `ERROR` com stack para 5xx
+ * <p>
+ * Cobre regras de negócio, validação, JSON malformado e erros inesperados -> web e mobile recebem sempre o mesmo formato
+ * </p>
+ *
+ * <p>
+ * Toda exceção tratada é marcada como erro no tracing ([HttpObservationErrors.mark]: span `ERROR` + tag `exception`
+ * em `http.server.requests`) e gera log correlacionado ao trace: `WARN` para 4xx, `ERROR` com stack trace para 5xx
+ * </p>
+ *
+ * <p>Corpo montado por [ProblemDetailFactory]</p>
  */
 @RestControllerAdvice
 class AuthExceptionHandler(
@@ -60,7 +66,7 @@ class AuthExceptionHandler(
     @ExceptionHandler(AccessDeniedException::class)
     fun accessDenied(exception: AccessDeniedException): ResponseEntity<ProblemDetail> {
         recordError(exception, HttpStatus.FORBIDDEN, "FORBIDDEN")
-        return error(HttpStatus.FORBIDDEN, "FORBIDDEN", "Access is denied")
+        return error(HttpStatus.FORBIDDEN, "FORBIDDEN", "Acesso negado: você não tem permissão para acessar este recurso.")
     }
 
     @ExceptionHandler(EmailAlreadyRegisteredException::class)
@@ -84,9 +90,9 @@ class AuthExceptionHandler(
     @ExceptionHandler(MethodArgumentNotValidException::class)
     fun validationError(exception: MethodArgumentNotValidException): ResponseEntity<ProblemDetail> {
         recordError(exception, HttpStatus.UNPROCESSABLE_CONTENT, "VALIDATION_FAILED")
-        return error(HttpStatus.UNPROCESSABLE_CONTENT, "VALIDATION_FAILED", "Request validation failed",
+        return error(HttpStatus.UNPROCESSABLE_CONTENT, "VALIDATION_FAILED", "Erro de validação nos campos da requisição.",
             mapOf("errors" to exception.bindingResult.fieldErrors.map {
-                mapOf("field" to it.field, "errorCode" to "VALIDATION_FAILED", "detail" to (it.defaultMessage ?: "Invalid value"))
+                mapOf("field" to it.field, "errorCode" to "VALIDATION_FAILED", "detail" to (it.defaultMessage ?: "Valor inválido."))
             }))
     }
 
@@ -94,7 +100,7 @@ class AuthExceptionHandler(
     @ExceptionHandler(HttpMessageNotReadableException::class)
     fun malformedRequest(exception: HttpMessageNotReadableException): ResponseEntity<ProblemDetail> {
         recordError(exception, HttpStatus.UNPROCESSABLE_CONTENT, "MALFORMED_REQUEST")
-        return error(HttpStatus.UNPROCESSABLE_CONTENT, "MALFORMED_REQUEST", "Request body is malformed or unreadable")
+        return error(HttpStatus.UNPROCESSABLE_CONTENT, "MALFORMED_REQUEST", "Corpo da requisição malformado ou ilegível.")
     }
 
     @ExceptionHandler(AccountLinkRequiredException::class)
@@ -157,10 +163,11 @@ class AuthExceptionHandler(
             val status = if (received == HttpStatus.BAD_REQUEST) HttpStatus.UNPROCESSABLE_CONTENT else received
             val code = genericErrorCode(status)
             recordError(exception, status, code)
-            return error(status, code, "The request could not be processed")
+            return error(status, code, "A requisição não pôde ser processada.")
         }
         recordError(exception, HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR")
-        return error(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "An unexpected internal error occurred")
+        return error(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR",
+            "Ocorreu um erro interno inesperado. Se persistir, contate o suporte.")
     }
 
     private fun genericErrorCode(status: HttpStatus): String = when (status) {

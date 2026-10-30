@@ -67,6 +67,7 @@ class ProblemDetailContractTests {
         val method = javaClass.getMethod("validationEndpoint", String::class.java)
         val response = handler.validationError(MethodArgumentNotValidException(MethodParameter(method, 0), result))
         checkContract(requireNotNull(response.body), 422, "VALIDATION_FAILED")
+        assertEquals("Erro de validação nos campos da requisição.", response.body?.detail)
         assertEquals(listOf(mapOf("field" to "email", "errorCode" to "VALIDATION_FAILED", "detail" to "Invalid email")), response.body?.properties?.get("errors"))
     }
 
@@ -152,7 +153,7 @@ class ProblemDetailContractTests {
     fun `unexpected errors do not expose the internal diagnostic`() {
         val response = handler.unhandled(IllegalStateException("secret internal diagnostic"))
         checkContract(requireNotNull(response.body), 500, "INTERNAL_ERROR")
-        assertEquals("An unexpected internal error occurred", response.body?.detail)
+        assertEquals("Ocorreu um erro interno inesperado. Se persistir, contate o suporte.", response.body?.detail)
         val notFound = handler.unhandled(ResponseStatusException(HttpStatus.NOT_FOUND))
         checkContract(requireNotNull(notFound.body), 404, "NOT_FOUND")
     }
