@@ -6,7 +6,18 @@
   "packages": {
     ".": {
       "release-type": "simple",
-      "package-name": "api-auth"
+      "package-name": "api-auth",
+      "extra-files": [
+        {
+          "type": "xml",
+          "path": "pom.xml",
+          "xpath": "/*[local-name()='project']/*[local-name()='version']"
+        },
+        {
+          "type": "generic",
+          "path": "openapi.yaml"
+        }
+      ]
     }
   }
 }

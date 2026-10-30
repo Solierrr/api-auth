@@ -17,7 +17,7 @@ import java.time.Instant
  * </p>
  *
  * <p>
- * Sem `type` e sem `title` próprio -> o Spring preenche `title` com a reason phrase do status ("Not Found")
+ * `type` sempre `about:blank` e `title` igual ao `errorCode` -> padrão de erro da org (docs-warehouse ERRORS.md)
  * </p>
  */
 @Component
@@ -29,6 +29,8 @@ class ProblemDetailFactory {
         properties: Map<String, Any> = emptyMap(),
         request: HttpServletRequest? = null,
     ): ProblemDetail = ProblemDetail.forStatusAndDetail(status, detail).apply {
+        type = ABOUT_BLANK
+        title = errorCode
         if (request != null) instance = URI.create(request.requestURI)
         setProperty("errorCode", errorCode)
         setProperty("timestamp", Instant.now())
@@ -36,5 +38,9 @@ class ProblemDetailFactory {
         val span = Span.current().spanContext
         if (span.isValid) setProperty("traceId", span.traceId)
         properties.forEach { (key, value) -> setProperty(key, value) }
+    }
+
+    private companion object {
+        val ABOUT_BLANK: URI = URI.create("about:blank")
     }
 }

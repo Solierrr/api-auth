@@ -75,9 +75,12 @@ class SecurityConfig(
             it.requestMatchers("/internal/**").permitAll()
             // Docs OpenAPI/Swagger ficam públicas
             it.requestMatchers(
-                "/v3/api-docs/**",
+                "/docs",
                 "/swagger-ui/**",
                 "/swagger-ui.html",
+                "/openapi.json",
+                "/openapi.json/**",
+                "/openapi.json.yaml",
             ).permitAll()
             // o resto exige autenticação
             it.anyRequest().authenticated()

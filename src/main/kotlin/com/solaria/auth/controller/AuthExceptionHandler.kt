@@ -65,8 +65,8 @@ class AuthExceptionHandler(
 
     @ExceptionHandler(AccessDeniedException::class)
     fun accessDenied(exception: AccessDeniedException): ResponseEntity<ProblemDetail> {
-        recordError(exception, HttpStatus.FORBIDDEN, "ACCESS_DENIED")
-        return error(HttpStatus.FORBIDDEN, "ACCESS_DENIED", "Acesso negado: você não tem permissão para acessar este recurso.")
+        recordError(exception, HttpStatus.FORBIDDEN, "FORBIDDEN")
+        return error(HttpStatus.FORBIDDEN, "FORBIDDEN", "Acesso negado: você não tem permissão para acessar este recurso.")
     }
 
     @ExceptionHandler(EmailAlreadyRegisteredException::class)
@@ -89,18 +89,18 @@ class AuthExceptionHandler(
 
     @ExceptionHandler(MethodArgumentNotValidException::class)
     fun validationError(exception: MethodArgumentNotValidException): ResponseEntity<ProblemDetail> {
-        recordError(exception, HttpStatus.BAD_REQUEST, "VALIDATION_ERROR")
-        return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Erro de validação nos campos da requisição.",
+        recordError(exception, HttpStatus.UNPROCESSABLE_CONTENT, "VALIDATION_FAILED")
+        return error(HttpStatus.UNPROCESSABLE_CONTENT, "VALIDATION_FAILED", "Erro de validação nos campos da requisição.",
             mapOf("errors" to exception.bindingResult.fieldErrors.map {
-                mapOf("field" to it.field, "message" to (it.defaultMessage ?: "Valor inválido."))
+                mapOf("field" to it.field, "errorCode" to "VALIDATION_FAILED", "detail" to (it.defaultMessage ?: "Valor inválido."))
             }))
     }
 
     // Corpo de request malformado/ilegivel
     @ExceptionHandler(HttpMessageNotReadableException::class)
     fun malformedRequest(exception: HttpMessageNotReadableException): ResponseEntity<ProblemDetail> {
-        recordError(exception, HttpStatus.BAD_REQUEST, "MALFORMED_REQUEST")
-        return error(HttpStatus.BAD_REQUEST, "MALFORMED_REQUEST", "Corpo da requisição malformado ou ilegível.")
+        recordError(exception, HttpStatus.UNPROCESSABLE_CONTENT, "MALFORMED_REQUEST")
+        return error(HttpStatus.UNPROCESSABLE_CONTENT, "MALFORMED_REQUEST", "Corpo da requisição malformado ou ilegível.")
     }
 
     @ExceptionHandler(AccountLinkRequiredException::class)
@@ -159,13 +159,29 @@ class AuthExceptionHandler(
     @ExceptionHandler(Exception::class)
     fun unhandled(exception: Exception): ResponseEntity<ProblemDetail> {
         if (exception is SpringErrorResponse) {
-            val status = HttpStatus.valueOf(exception.statusCode.value())
-            recordError(exception, status, "REQUEST_ERROR")
-            return error(status, "REQUEST_ERROR", "A requisição não pôde ser processada.")
+            val received = HttpStatus.valueOf(exception.statusCode.value())
+            val status = if (received == HttpStatus.BAD_REQUEST) HttpStatus.UNPROCESSABLE_CONTENT else received
+            val code = genericErrorCode(status)
+            recordError(exception, status, code)
+            return error(status, code, "A requisição não pôde ser processada.")
         }
         recordError(exception, HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR")
         return error(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR",
             "Ocorreu um erro interno inesperado. Se persistir, contate o suporte.")
+    }
+
+    private fun genericErrorCode(status: HttpStatus): String = when (status) {
+        HttpStatus.UNPROCESSABLE_CONTENT -> "VALIDATION_FAILED"
+        HttpStatus.UNAUTHORIZED -> "UNAUTHENTICATED"
+        HttpStatus.FORBIDDEN -> "FORBIDDEN"
+        HttpStatus.NOT_FOUND -> "NOT_FOUND"
+        HttpStatus.METHOD_NOT_ALLOWED -> "METHOD_NOT_ALLOWED"
+        HttpStatus.NOT_ACCEPTABLE -> "NOT_ACCEPTABLE"
+        HttpStatus.CONFLICT -> "CONFLICT"
+        HttpStatus.UNSUPPORTED_MEDIA_TYPE -> "UNSUPPORTED_MEDIA_TYPE"
+        HttpStatus.TOO_MANY_REQUESTS -> "RATE_LIMITED"
+        HttpStatus.BAD_GATEWAY, HttpStatus.SERVICE_UNAVAILABLE -> "DEPENDENCY_UNAVAILABLE"
+        else -> if (status.is4xxClientError) "VALIDATION_FAILED" else "INTERNAL_ERROR"
     }
 
     private fun error(status: HttpStatus, code: String, message: String,

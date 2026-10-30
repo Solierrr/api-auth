@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component
 import tools.jackson.databind.ObjectMapper
 
 /**
- * Devolve o 403 de RBAC no formato [ProblemDetail] (`ACCESS_DENIED`)
+ * Devolve o 403 de RBAC no formato [ProblemDetail] (`FORBIDDEN`)
  *
  * <p>
  * Roda na chain do Spring Security, antes do Spring MVC -> o `AuthExceptionHandler` não alcança este erro,
@@ -30,11 +30,11 @@ class ProblemDetailAccessDeniedHandler(
 
     override fun handle(request: HttpServletRequest, response: HttpServletResponse, exception: AccessDeniedException) {
         HttpObservationErrors.mark(request, exception)
-        log.atWarn().addKeyValue("errorCode", "ACCESS_DENIED")
+        log.atWarn().addKeyValue("errorCode", "FORBIDDEN")
             .log("403 em {} {}: {}", request.method, request.requestURI, exception.message)
         val message = "Acesso negado: você não tem permissão para acessar este recurso."
-        val body = factory.create(HttpStatus.FORBIDDEN, message, "ACCESS_DENIED",
-            mapOf("code" to "ACCESS_DENIED", "message" to message), request)
+        val body = factory.create(HttpStatus.FORBIDDEN, message, "FORBIDDEN",
+            mapOf("code" to "FORBIDDEN", "message" to message), request)
         response.status = HttpStatus.FORBIDDEN.value()
         response.contentType = "application/problem+json"
         response.characterEncoding = "UTF-8"

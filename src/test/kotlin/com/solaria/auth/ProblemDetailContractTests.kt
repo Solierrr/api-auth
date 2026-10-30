@@ -33,7 +33,6 @@ import tools.jackson.databind.ObjectMapper
 import java.net.URI
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class ProblemDetailContractTests {
@@ -58,7 +57,6 @@ class ProblemDetailContractTests {
             .andExpect(jsonPath("$.status").value(409))
             .andExpect(jsonPath("$.errorCode").value("EMAIL_ALREADY_REGISTERED"))
             .andExpect(jsonPath("$.code").value("EMAIL_ALREADY_REGISTERED"))
-            .andExpect(jsonPath("$.title").value("Conflict"))
             .andExpect(jsonPath("$.timestamp").exists())
     }
 
@@ -68,9 +66,9 @@ class ProblemDetailContractTests {
         result.addError(FieldError("payload", "email", "Invalid email"))
         val method = javaClass.getMethod("validationEndpoint", String::class.java)
         val response = handler.validationError(MethodArgumentNotValidException(MethodParameter(method, 0), result))
-        checkContract(requireNotNull(response.body), 400, "VALIDATION_ERROR")
+        checkContract(requireNotNull(response.body), 422, "VALIDATION_FAILED")
         assertEquals("Erro de validação nos campos da requisição.", response.body?.detail)
-        assertEquals(listOf(mapOf("field" to "email", "message" to "Invalid email")), response.body?.properties?.get("errors"))
+        assertEquals(listOf(mapOf("field" to "email", "errorCode" to "VALIDATION_FAILED", "detail" to "Invalid email")), response.body?.properties?.get("errors"))
     }
 
     @Test
@@ -92,12 +90,11 @@ class ProblemDetailContractTests {
 
     private fun checkContract(body: ProblemDetail, status: Int, code: String) {
         assertEquals(status, body.status)
-        // title é a reason phrase do status (Spring), não o errorCode
-        assertEquals(HttpStatus.valueOf(status).reasonPhrase, body.title)
+        assertEquals(code, body.title)
         assertEquals(code, body.properties?.get("errorCode"))
         assertNotNull(body.properties?.get("timestamp"))
         assertEquals(URI.create("/auth/login"), body.instance)
-        assertNull(body.type)
+        assertEquals(URI.create("about:blank"), body.type)
     }
 
     @Test
@@ -134,10 +131,10 @@ class ProblemDetailContractTests {
         ProblemDetailAccessDeniedHandler(factory, mapper).handle(request, response, AccessDeniedException("Denied"))
         val captured = ArgumentCaptor.forClass(ProblemDetail::class.java)
         Mockito.verify(mapper).writeValueAsString(captured.capture())
-        checkContract(captured.value, 403, "ACCESS_DENIED")
+        checkContract(captured.value, 403, "FORBIDDEN")
         assertEquals(403, response.status)
         assertTrue(response.contentType.orEmpty().startsWith("application/problem+json"))
-        checkContract(requireNotNull(handler.accessDenied(AccessDeniedException("Denied")).body), 403, "ACCESS_DENIED")
+        checkContract(requireNotNull(handler.accessDenied(AccessDeniedException("Denied")).body), 403, "FORBIDDEN")
     }
 
     @Test
@@ -158,6 +155,6 @@ class ProblemDetailContractTests {
         checkContract(requireNotNull(response.body), 500, "INTERNAL_ERROR")
         assertEquals("Ocorreu um erro interno inesperado. Se persistir, contate o suporte.", response.body?.detail)
         val notFound = handler.unhandled(ResponseStatusException(HttpStatus.NOT_FOUND))
-        checkContract(requireNotNull(notFound.body), 404, "REQUEST_ERROR")
+        checkContract(requireNotNull(notFound.body), 404, "NOT_FOUND")
     }
 }
