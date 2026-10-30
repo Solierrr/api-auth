@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 
 /**
- * Centraliza o tratamento de exceções da API de auth e devolve todo erro como [ProblemDetail]
+ * Centraliza o tratamento de exceções da API de auth e devolve qualquer erro como [ProblemDetail]
  *
  * <p>
  * Cobre regras de negócio, validação, JSON malformado e erros inesperados -> web e mobile recebem sempre o mesmo formato

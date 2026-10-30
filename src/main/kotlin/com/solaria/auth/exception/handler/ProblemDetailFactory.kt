@@ -9,7 +9,7 @@ import java.net.URI
 import java.time.Instant
 
 /**
- * Monta o corpo JSON de todo erro da API no formato [ProblemDetail] (RFC 9457)
+ * Monta o corpo JSON de qualquer erro da API no formato [ProblemDetail] (RFC 9457)
  *
  * <p>
  * `errorCode` identifica o erro, `timestamp` marca a falha e `traceId` leva direto ao trace no Grafana
