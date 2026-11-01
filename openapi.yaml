@@ -263,6 +263,13 @@ components:
           format: password
           minLength: 12
           maxLength: 72
+        locale:
+          type: string
+          description: Idioma preferido; ausente vira pt-BR
+          enum:
+          - pt-BR
+          - en-US
+          - es-ES
     LoginRequest:
       type: object
       required:

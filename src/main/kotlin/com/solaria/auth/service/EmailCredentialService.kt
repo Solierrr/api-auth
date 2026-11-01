@@ -88,7 +88,7 @@ class EmailCredentialService(
         tokens.save(OneTimeToken(user = user, type = type, tokenHash = TokenHashing.sha256(token),
             expiresAt = Instant.now().plusSeconds(if (type == OneTimeTokenType.PASSWORD_RESET) 1800 else 86400)))
         val link = UriComponentsBuilder.fromUriString(url).queryParam("token", token).build().encode().toUriString()
-        try { emailClient.send(template, user.primaryEmail, link) }
+        try { emailClient.send(template, user.primaryEmail, link, user.locale) }
         catch (failure: EmailDeliveryException) {
             log.warn("E-mail {} não enviado: {}", template, failure.message)
             throw MobileFlowException("EMAIL_UNAVAILABLE", HttpStatus.SERVICE_UNAVAILABLE)

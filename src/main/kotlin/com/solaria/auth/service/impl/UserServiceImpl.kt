@@ -21,12 +21,12 @@ class UserServiceImpl(
     private val outboxEventRepository: OutboxEventRepository,
     private val passwordEncoder: PasswordEncoder
 ) : UserService {
-    override fun create(email: String, rawPassword: String): UserAccount {
+    override fun create(email: String, rawPassword: String, locale: String?): UserAccount {
         if (rawPassword.length < 12 || rawPassword.toByteArray().size > 72) throw com.solaria.auth.mobile.MobileFlowException("PASSWORD_POLICY")
         val normalizedEmail = email.trim().lowercase()
         require(normalizedEmail.isNotBlank()) { "Email must not be blank" }
         if (userAccountRepository.existsByPrimaryEmail(normalizedEmail)) throw EmailAlreadyRegisteredException()
-        val user = UserAccount(primaryEmail = normalizedEmail)
+        val user = UserAccount(primaryEmail = normalizedEmail, locale = locale ?: "pt-BR")
         user.localCredential = LocalCredential(
             user = user,
             passwordHash = requireNotNull(passwordEncoder.encode(rawPassword))

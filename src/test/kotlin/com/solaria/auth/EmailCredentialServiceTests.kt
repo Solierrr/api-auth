@@ -47,7 +47,7 @@ class EmailCredentialServiceTests {
     init {
         Mockito.`when`(email.configured).thenReturn(true)
         Mockito.doAnswer { sent += Sent(it.getArgument(0), it.getArgument(1), it.getArgument(2)); null }
-            .`when`(email).send(Mockito.anyString(), Mockito.anyString(), Mockito.anyString())
+            .`when`(email).send(Mockito.anyString(), Mockito.anyString(), Mockito.anyString(), Mockito.anyString())
         Mockito.`when`(tokens.save(Mockito.any(OneTimeToken::class.java))).thenAnswer { (it.arguments[0] as OneTimeToken).also(saved::add) }
         Mockito.`when`(users.findByPrimaryEmailForUpdate(user.primaryEmail)).thenReturn(user)
         Mockito.`when`(users.findById(requireNotNull(user.id))).thenReturn(Optional.of(user))
@@ -126,7 +126,7 @@ class EmailCredentialServiceTests {
 
     @Test
     fun `a delivery failure is reported as unavailable`() {
-        Mockito.doThrow(EmailDeliveryException("down")).`when`(email).send(Mockito.anyString(), Mockito.anyString(), Mockito.anyString())
+        Mockito.doThrow(EmailDeliveryException("down")).`when`(email).send(Mockito.anyString(), Mockito.anyString(), Mockito.anyString(), Mockito.anyString())
 
         val failure = assertFailsWith<MobileFlowException> { service().requestReset(user.primaryEmail) }
 
