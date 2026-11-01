@@ -1,0 +1,8 @@
+{
+  "service": "api-auth",
+  "aliases": [
+    "auth"
+  ],
+  "project": "DEV",
+  "host": "https://auth.solarianetwork.site"
+}
