@@ -51,6 +51,13 @@ class EmailClientTests {
     }
 
     @Test
+    fun `sends the locale of the person`() {
+        client().send("email-verification", "user@example.com", "https://app.example.com/x", "es-ES")
+
+        assertTrue(requireNotNull(captured.get()).body.contains(""""locale":"es-ES""""))
+    }
+
+    @Test
     fun `a rejected request fails without leaking the recipient`() {
         status = 503
         val failure = assertFailsWith<EmailDeliveryException> { client().send("email-verification", "user@example.com", "https://app.example.com/x") }

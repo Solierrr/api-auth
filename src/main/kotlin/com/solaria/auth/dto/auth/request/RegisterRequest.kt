@@ -2,6 +2,7 @@ package com.solaria.auth.dto.auth.request
 
 import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank
+import jakarta.validation.constraints.Pattern
 import jakarta.validation.constraints.Size
 
 data class RegisterRequest(
@@ -11,5 +12,9 @@ data class RegisterRequest(
 
     @field:NotBlank
     @field:Size(min = 12, max = 72)
-    val password: String
+    val password: String,
+
+    // idioma preferido; ausente vira pt-BR
+    @field:Pattern(regexp = "pt-BR|en-US|es-ES")
+    val locale: String? = null
 )
