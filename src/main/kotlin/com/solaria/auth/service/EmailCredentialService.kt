@@ -81,13 +81,20 @@ class EmailCredentialService(
         sessions.revokeAllFor(user)
     }
 
+    // A configuração guarda só a origem do web-app; o caminho segue o idioma da conta (as rotas do web-app mudam por idioma)
+    private fun localized(base: String, template: String, locale: String): String {
+        val segment = ROUTES[template]?.get(locale) ?: return base
+        val uri = UriComponentsBuilder.fromUriString(base).build()
+        return UriComponentsBuilder.newInstance().scheme(uri.scheme).host(uri.host).port(uri.port).path("/$locale/$segment").toUriString()
+    }
+
     private fun send(user: com.solaria.auth.entity.UserAccount, type: OneTimeTokenType, url: String, template: String) {
         val previous = tokens.findFirstByUserIdAndTypeOrderByCreatedAtDesc(requireNotNull(user.id), type)
         if (previous?.createdAt?.isAfter(Instant.now().minusSeconds(60)) == true) return
         val token = MobileAuthorizationService.random()
         tokens.save(OneTimeToken(user = user, type = type, tokenHash = TokenHashing.sha256(token),
             expiresAt = Instant.now().plusSeconds(if (type == OneTimeTokenType.PASSWORD_RESET) 1800 else 86400)))
-        val link = UriComponentsBuilder.fromUriString(url).queryParam("token", token).build().encode().toUriString()
+        val link = UriComponentsBuilder.fromUriString(localized(url, template, user.locale)).queryParam("token", token).build().encode().toUriString()
         try { emailClient.send(template, user.primaryEmail, link, user.locale) }
         catch (failure: EmailDeliveryException) {
             log.warn("E-mail {} não enviado: {}", template, failure.message)
@@ -114,4 +121,12 @@ class EmailCredentialService(
     }
 
     private fun invalidToken(): Nothing = throw MobileFlowException("INVALID_OR_EXPIRED_TOKEN")
+
+    private companion object {
+        // caminhos das páginas do web-app em cada idioma (src/config/i18n/locales/*/routes.json)
+        val ROUTES = mapOf(
+            "email-verification" to mapOf("pt-BR" to "verificar-email", "en-US" to "verify-email", "es-ES" to "verificar-correo"),
+            "password-reset" to mapOf("pt-BR" to "redefinir-senha", "en-US" to "reset-password", "es-ES" to "restablecer-contrasena")
+        )
+    }
 }

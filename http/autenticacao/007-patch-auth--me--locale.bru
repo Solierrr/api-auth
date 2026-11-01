@@ -1,0 +1,26 @@
+meta {
+  name: [mutates] PATCH /auth/me/locale
+  type: http
+  seq: 7
+}
+
+patch {
+  url: {{baseUrl}}/auth/me/locale
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{userToken}}
+}
+
+body:json {
+  {
+    "locale": "es-ES"
+  }
+}
+
+docs {
+  Trocar o idioma preferido da conta
+  This operation may change server state.
+}
