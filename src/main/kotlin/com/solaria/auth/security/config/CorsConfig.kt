@@ -13,7 +13,7 @@ class CorsConfig(@Value("\${app.cors.allowed-origins:http://localhost:5173,http:
     fun corsConfigurationSource(): CorsConfigurationSource {
         val configuration = CorsConfiguration().apply {
             allowedOrigins = origins.split(',').map(String::trim).filter(String::isNotEmpty)
-            allowedMethods = listOf("GET", "POST", "DELETE", "OPTIONS")
+            allowedMethods = listOf("GET", "POST", "PATCH", "DELETE", "OPTIONS")
             allowedHeaders = listOf("Authorization", "Content-Type")
             allowCredentials = false
             maxAge = 600

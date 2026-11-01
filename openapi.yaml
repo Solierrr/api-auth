@@ -397,6 +397,58 @@ paths:
       x-error-codes:
       - UNAUTHENTICATED
       - INTERNAL_ERROR
+  /auth/me/locale:
+    patch:
+      description: "O idioma define o idioma dos e-mails da conta: pt-BR, en-US ou\
+        \ es-ES."
+      operationId: updateCurrentUserLocale
+      parameters:
+      - in: query
+        name: principal
+        required: true
+        schema:
+          $ref: "#/components/schemas/AuthUser"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLocaleRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+          description: Idioma atualizado
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Não autenticado
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Idioma não suportado ou corpo ilegível
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Erro interno inesperado
+      summary: Troca o idioma preferido do usuário autenticado
+      tags:
+      - Sessões
+      x-error-codes:
+      - VALIDATION_FAILED
+      - MALFORMED_REQUEST
+      - UNAUTHENTICATED
+      - INTERNAL_ERROR
   /auth/mobile/token:
     post:
       description: Confere o code_verifier do PKCE e abre a sessão mobile (contexto
@@ -1429,6 +1481,15 @@ components:
           type: string
           maxLength: 43
           minLength: 43
+    UpdateLocaleRequest:
+      type: object
+      properties:
+        locale:
+          type: string
+          minLength: 1
+          pattern: pt-BR|en-US|es-ES
+      required:
+      - locale
   securitySchemes:
     bearerAuth:
       bearerFormat: JWT
