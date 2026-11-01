@@ -1370,6 +1370,11 @@ components:
           type: string
           format: email
           minLength: 1
+        locale:
+          type:
+          - string
+          - "null"
+          pattern: pt-BR|en-US|es-ES
         password:
           type: string
           maxLength: 72

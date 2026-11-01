@@ -45,6 +45,10 @@ class UserAccount(
     @Column(name = "last_login_at")
     var lastLoginAt: Instant? = null,
 
+    // idioma preferido da pessoa (pt-BR, en-US ou es-ES), usado nos e-mails
+    @Column(nullable = false, length = 5)
+    var locale: String = "pt-BR",
+
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant = Instant.now(),
 
