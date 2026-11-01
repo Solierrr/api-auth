@@ -1,5 +1,6 @@
 package com.solaria.auth.mobile
 
+import com.solaria.auth.dto.auth.request.UpdateLocaleRequest
 import com.solaria.auth.enums.AccountStatus
 import com.solaria.auth.repository.SessionRepository
 import com.solaria.auth.repository.UserAccountRepository
@@ -17,7 +18,10 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.transaction.annotation.Transactional
+import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PatchMapping
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestHeader
@@ -49,8 +53,28 @@ class SessionController(
         val user = users.findById(principal.id).orElseThrow()
         val session = sessions.findById(requireNotNull(principal.sessionId)).orElseThrow()
         return mapOf("userId" to user.id, "email" to user.primaryEmail,
-            "emailVerified" to (user.emailVerifiedAt != null), "sessionId" to session.id,
+            "emailVerified" to (user.emailVerifiedAt != null), "locale" to user.locale, "sessionId" to session.id,
             "clientId" to session.clientId, "context" to session.context)
+    }
+
+    @PatchMapping("/auth/me/locale")
+    @Operation(
+        operationId = "updateCurrentUserLocale",
+        summary = "Troca o idioma preferido do usuário autenticado",
+        description = "O idioma define o idioma dos e-mails da conta: pt-BR, en-US ou es-ES.",
+        extensions = [Extension(properties = [ExtensionProperty(name = "x-error-codes", parseValue = true, value = "[\"VALIDATION_FAILED\", \"MALFORMED_REQUEST\", \"UNAUTHENTICATED\", \"INTERNAL_ERROR\"]")])],
+    )
+    @ApiResponses(
+        ApiResponse(responseCode = "200", description = "Idioma atualizado"),
+        ApiResponse(responseCode = "401", description = "Não autenticado"),
+        ApiResponse(responseCode = "422", description = "Idioma não suportado ou corpo ilegível"),
+    )
+    fun updateLocale(@AuthenticationPrincipal principal: AuthUser, @Valid @RequestBody request: UpdateLocaleRequest): Map<String, String> {
+        val user = users.findById(principal.id).orElseThrow()
+        user.locale = request.locale
+        user.updatedAt = Instant.now()
+        users.save(user)
+        return mapOf("locale" to user.locale)
     }
 
     @PostMapping("/auth/sessions/current/logout")

@@ -28,7 +28,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class EmailCredentialServiceTests {
-    private class Sent(val template: String, val to: String, val link: String)
+    private class Sent(val template: String, val to: String, val link: String, val locale: String)
 
     private val users = Mockito.mock(UserAccountRepository::class.java)
     private val tokens = Mockito.mock(OneTimeTokenRepository::class.java)
@@ -46,7 +46,7 @@ class EmailCredentialServiceTests {
 
     init {
         Mockito.`when`(email.configured).thenReturn(true)
-        Mockito.doAnswer { sent += Sent(it.getArgument(0), it.getArgument(1), it.getArgument(2)); null }
+        Mockito.doAnswer { sent += Sent(it.getArgument(0), it.getArgument(1), it.getArgument(2), it.getArgument(3)); null }
             .`when`(email).send(Mockito.anyString(), Mockito.anyString(), Mockito.anyString(), Mockito.anyString())
         Mockito.`when`(tokens.save(Mockito.any(OneTimeToken::class.java))).thenAnswer { (it.arguments[0] as OneTimeToken).also(saved::add) }
         Mockito.`when`(users.findByPrimaryEmailForUpdate(user.primaryEmail)).thenReturn(user)
@@ -191,6 +191,20 @@ class EmailCredentialServiceTests {
         assertEquals("email-verification", mail.template)
         assertTrue(mail.link.startsWith("$verificationUrl?token="))
         assertEquals(OneTimeTokenType.EMAIL_VERIFICATION, saved.single().type)
+    }
+
+    @Test
+    fun `links and mail follow the language of the account`() {
+        user.locale = "es-ES"
+
+        service().requestReset(user.primaryEmail)
+        service().requestVerification(requireNotNull(user.id))
+
+        val (reset, verification) = sent
+        assertTrue(reset.link.startsWith("https://app.example.com/es-ES/restablecer-contrasena?token="))
+        assertTrue(verification.link.startsWith("https://app.example.com/es-ES/verificar-correo?token="))
+        assertEquals("es-ES", reset.locale)
+        assertEquals("es-ES", verification.locale)
     }
 
     @Test
