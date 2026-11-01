@@ -222,6 +222,34 @@ paths:
           description: Sessão encerrada; sem corpo na resposta.
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /auth/me/locale:
+    patch:
+      tags:
+      - Autenticação
+      operationId: updateCurrentUserLocale
+      summary: Trocar o idioma preferido da conta
+      description: O idioma define o idioma dos e-mails da conta.
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - locale
+              properties:
+                locale:
+                  type: string
+                  enum: [pt-BR, en-US, es-ES]
+      responses:
+        '200':
+          description: Idioma atualizado.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          description: Idioma não suportado ou corpo ilegível.
 components:
   securitySchemes:
     bearerAuth:
