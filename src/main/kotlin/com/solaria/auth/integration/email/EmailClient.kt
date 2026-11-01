@@ -34,14 +34,14 @@ class EmailClient(private val properties: EmailClientProperties) {
         if (!configured) log.warn("api-email não configurado (EMAIL_SERVICE_URL/EMAIL_SERVICE_API_KEY): e-mails transacionais desligados")
     }
 
-    fun send(template: String, to: String, actionUrl: String) {
+    fun send(template: String, to: String, actionUrl: String, locale: String = "pt-BR") {
         val client = restClient ?: throw EmailDeliveryException("api-email não configurado")
         try {
             client.post()
                 .uri("/emails")
                 .header("X-API-Key", properties.apiKey)
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(mapOf("template" to template, "locale" to "pt-BR", "to" to to, "data" to mapOf("actionUrl" to actionUrl)))
+                .body(mapOf("template" to template, "locale" to locale, "to" to to, "data" to mapOf("actionUrl" to actionUrl)))
                 .retrieve()
                 .toBodilessEntity()
         } catch (failure: RestClientResponseException) {

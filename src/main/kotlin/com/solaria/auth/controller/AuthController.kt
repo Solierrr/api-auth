@@ -35,7 +35,7 @@ class AuthController(
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Registra um novo usuário")
     fun register(@Valid @RequestBody request: RegisterRequest): RegisterResponse {
-        val user = authService.register(request.email, request.password)
+        val user = authService.register(request.email, request.password, request.locale)
         return RegisterResponse(requireNotNull(user.id), user.primaryEmail, "User registered")
     }
 

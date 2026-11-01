@@ -16,7 +16,7 @@ data class AuthSession(
 )
 
 interface AuthService {
-    fun register(email: String, password: String): UserAccount
+    fun register(email: String, password: String, locale: String? = null): UserAccount
     fun login(email: String, password: String, ip: String? = null, userAgent: String? = null, device: String? = null): AuthSession
     fun refresh(refreshToken: String, ip: String? = null, userAgent: String? = null, device: String? = null): AuthSession
     fun logout(userId: UUID)

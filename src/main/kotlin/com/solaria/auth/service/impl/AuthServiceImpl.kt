@@ -26,7 +26,7 @@ class AuthServiceImpl(
     private val authenticationAttemptService: AuthenticationAttemptService,
     private val mobileEligibility: com.solaria.auth.mobile.MobileEligibilityService
 ) : AuthService {
-    override fun register(email: String, password: String): UserAccount = userService.create(email, password)
+    override fun register(email: String, password: String, locale: String?): UserAccount = userService.create(email, password, locale)
 
     override fun login(email: String, password: String, ip: String?, userAgent: String?, device: String?): AuthSession {
         try {
