@@ -1,74 +1,34 @@
-# Arquitetura do Repositório
-
-O `api-auth` segue uma arquitetura em camadas típica de um serviço Spring Boot (`controller` → `service`/`service.impl` → `repository` → `domain`), com dois eixos adicionais que não aparecem em um CRUD comum: um módulo `security` dedicado a emissão/validação de JWT e integração com Firebase, e um módulo `outbox` que implementa o padrão Transactional Outbox para publicar eventos de domínio sem acoplar o commit da transação de negócio à disponibilidade do Redis. A comunicação com outros serviços da organização (hoje, o `api-persistence`) é feita via HTTP autenticado por token de serviço M2M, isolada no pacote `integration`.
-
-<p>
-  <a href="https://github.com/syvixor/skills-icons">
-    <img src="https://skills.syvixor.com/api/icons?i=kotlin,springboot,postgresql,redis" height="48" alt="Arquitetura do api-auth">
-  </a>
+<p align="center">
+  <img src="../assets/readme/banners/springboot.png" alt="Spring Boot" width="100%">
 </p>
 
-- **Autenticação híbrida**, login local por e-mail/senha (`AuthService`/`AuthServiceImpl`) e login federado via Firebase (`FirebaseAuthenticationService`/`FirebaseAuthenticationServiceImpl`), com endpoint dedicado para vincular uma conta federada a uma conta local já existente (`/auth/firebase/link`).
-- **Tokens JWT assinados com par de chave RSA**, carregados de um keystore PKCS12 (`JwtKeysConfig`, `app.security.jwt.keystore-path`), com a chave pública exposta em `/.well-known/jwks.json` (`JwksController`) para que outros serviços validem tokens sem chamar o `api-auth` a cada request.
-- **Refresh token rotativo e sessão**, `SessionService`/`RefreshTokenService` controlam o ciclo de vida da sessão e a rotação do refresh token a cada uso, reduzindo a janela de reuso em caso de vazamento.
-- **Segundo fator (TOTP)**, entidade `TotpFactor` e `TwoFactorService` implementam autenticação em dois fatores baseada em tempo (RFC 6238), independente do provedor de login usado.
-- **Outbox assíncrono sobre Redis Streams**, `OutboxPollingScheduler` lê a tabela `outbox_event` (Postgres) e publica na stream configurada (`OutboxStreamPublisher`); `OutboxDeadLetterReclaimer` reclama mensagens não confirmadas (visibility timeout) e move entregas que excederam `max-delivery-attempts` para uma stream de dead-letter. O agendamento desses jobs é ligado explicitamente em `SchedulingConfig` (`@EnableScheduling`), já que a aplicação não tem agendamento habilitado por padrão.
-- **Integração service-to-service com `api-core`**, `CoreUserClient` provisiona o usuário definitivo em `POST /internal/users`, autenticado pelo cabeçalho `X-Service-Key` com a chave deste serviço (`SERVICE_KEY`) — o `api-auth` é a fonte da identidade/credencial, o `api-core` é a fonte dos dados de domínio do usuário.
-- **Persistência via JPA/Hibernate + Flyway**, schema versionado em `src/main/resources/db/migration` (`ddl-auto=validate`, nunca `update`), banco Postgres compartilhado com o `api-core` conforme documentado em `.env.example`.
-- **Coleção de testes de API em `http/`**, coleção [Bruno](https://www.usebruno.com/) com requisições locais organizadas por recurso, fora do escopo de testes automatizados (`src/test`).
+# Arquitetura
 
-```Tree do Repositório
-├── .mvn/
-│   └── wrapper/
-├── .sonar/
-├── http/
-│   ├── autenticacao/
-│   ├── chaves-publicas/
-│   ├── firebase/
-│   ├── environments/
-│   ├── bruno.json
-│   └── README.md
-├── src/
-│   ├── main/
-│   │   ├── kotlin/com/solaria/auth/
-│   │   │   ├── AuthApplication.kt
-│   │   │   ├── config/
-│   │   │   │   └── SchedulingConfig.kt
-│   │   │   ├── controller/
-│   │   │   │   ├── AuthController.kt
-│   │   │   │   ├── AuthExceptionHandler.kt
-│   │   │   │   └── JwksController.kt
-│   │   │   ├── domain/
-│   │   │   │   ├── entity/
-│   │   │   │   └── enums/
-│   │   │   ├── dto/
-│   │   │   │   ├── auth/{request,response}/
-│   │   │   │   └── persistence/{request,response}/
-│   │   │   ├── integration/persistence/
-│   │   │   ├── outbox/
-│   │   │   │   └── consumer/
-│   │   │   ├── repository/
-│   │   │   ├── security/
-│   │   │   │   ├── config/
-│   │   │   │   └── firebase/
-│   │   │   └── service/
-│   │   │       └── impl/
-│   │   └── resources/
-│   │       ├── application.properties
-│   │       └── db/migration/
-│   │           └── V1__create_auth_schema.sql
-│   └── test/
-│       └── kotlin/com/solaria/auth/
-├── .dockerignore
-├── .editorconfig
-├── .env.example
-├── Dockerfile
-├── LICENSE
-├── README.md
-├── ARCHITECTURE.md
-├── RUNNING.md
-├── mvnw
-├── mvnw.cmd
-├── pom.xml
-└── sonar-project.properties
+Aplicação Kotlin com Spring Boot, JPA, PostgreSQL, Redis Streams e validação de identidade por Firebase. Controllers ficam em `controller/` e `mobile/`, regras em `service/`, persistência em `repository/` e integrações em `integration/`.
+
+```mermaid
+flowchart LR
+ C[Web e aplicativo] -->|HTTP e JWT| A[API de identidade]
+ A --> P[(PostgreSQL)]
+ A --> R[(Redis Streams)]
+ R --> O[Consumidor de outbox]
+ O -->|HTTP e chave de serviço| CORE[api-core]
+ A -->|Verifica ID token| F[Firebase]
+ A -->|HTTP e X-API-Key| E[api-email]
+ S[Serviços] -->|HTTP público| J[JWKS]
+ A --> J
 ```
+
+O [consumidor](https://github.com/Solierrr/api-auth/blob/main/src/main/kotlin/com/solaria/auth/outbox/consumer/UserRegisteredEventListener.kt) pertence a este serviço e chama o `api-core`, confirmando o evento só depois do processamento, de modo que uma falha deixa a entrada pendente para uma nova tentativa.
+
+| Integração | Autenticação |
+|---|---|
+| Clientes | Senha ou prova Firebase para login, JWT para operações de conta |
+| `api-core` | Chave configurada no cliente HTTP |
+| `api-email` | `X-API-Key`, divergente do padrão atual de `X-Service-Key` |
+| Consumidores do JWKS | Consulta pública para obter chave de validação |
+| Rotas `/internal/**` | Liberadas na configuração de segurança, sem filtro de chave de serviço nesta main |
+
+As rotas internas devem exigir a `X-Service-Key` de cada chamador, sem depender só do gateway. Os dados estão em [POSTGRES.md](../database/POSTGRES.md) e [REDIS.md](../database/REDIS.md).
+
+As senhas usam BCrypt com custo 12, os access tokens duram quinze minutos por padrão e os refresh tokens aleatórios duram sete dias, guardados por hash e trocados a cada uso, com a sessão revogada quando um deles é reutilizado. O readiness considera o PostgreSQL e deixa de fora o Redis e o e-mail, o Actuator expõe health e info, e a telemetria usa OpenTelemetry.
