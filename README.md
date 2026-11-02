@@ -33,7 +33,6 @@ A identidade fica no PostgreSQL. O serviço emite JWT com assinatura assimétric
 - [STATUS.md](./docs/STATUS.md), limites observados.
 - [Dados](./database/), modelos e responsabilidades de persistência.
 - [Fluxos](./flows/), etapas e casos de erro do repositório.
-- [PENDENCIAS.md](./PENDENCIAS.md), questões para revisão.
 
 ## Contribuindo
 
