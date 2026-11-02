@@ -1,53 +1,42 @@
-# Finalidade do repositório
+<p align="center">
+  <img src="./assets/readme/banners/springboot.png" alt="Spring Boot" width="100%">
+</p>
 
-O `api-auth` é o serviço de autenticação e identidade da Solaria, responsável por registrar e autenticar usuários, emitir e renovar tokens JWT de acesso, gerenciar sessões e refresh tokens, e expor as chaves públicas via JWKS para que os demais serviços da organização validem tokens de forma independente. Além do fluxo local (e-mail e senha), o serviço suporta login federado via Firebase, vínculo de conta federada a uma conta local já existente e segundo fator via TOTP. Após um registro bem-sucedido, o serviço publica o evento de usuário criado em uma fila de outbox sobre Redis Streams, consumida pelo `api-persistence` para provisionar o registro definitivo do usuário — desacoplando a criação da identidade (aqui) do restante dos dados de domínio do usuário (lá).
+<p align="center">
+  <img src="./assets/readme/stacks/kotlin.png" width="100" hspace="8" alt="Kotlin" title="Kotlin">
+  <img src="./assets/readme/stacks/postgresql.png" width="100" hspace="8" alt="PostgreSQL" title="PostgreSQL">
+  <img src="./assets/readme/stacks/redis.png" width="100" hspace="8" alt="Redis" title="Redis">
+  <img src="./assets/readme/stacks/firebase.png" width="100" hspace="8" alt="Firebase" title="Firebase">
+  <img src="./assets/readme/stacks/jwt.png" width="100" hspace="8" alt="JWT" title="JWT">
+  <img src="./assets/readme/stacks/swagger.png" width="100" hspace="8" alt="Swagger" title="Swagger">
+  <img src="./assets/readme/stacks/bruno.png" width="100" hspace="8" alt="Bruno" title="Bruno">
+</p>
 
-<p>
+# Identidade e sessões
 
 [![License](https://img.shields.io/github/license/Solierrr/api-auth)](https://github.com/Solierrr/api-auth/blob/main/LICENSE)
 [![GitHub Last Commit](https://img.shields.io/github/last-commit/Solierrr/api-auth)](https://github.com/Solierrr/api-auth/commits)
-[![GitHub Issues](https://img.shields.io/github/issues/Solierrr/api-auth)](https://github.com/Solierrr/api-auth/issues)
 [![GitHub Pull Requests](https://img.shields.io/github/issues-pr/Solierrr/api-auth)](https://github.com/Solierrr/api-auth/pulls)
-[![GitHub Contributors](https://img.shields.io/github/contributors/Solierrr/api-auth)](https://github.com/Solierrr/api-auth/graphs/contributors)
 [![Release](https://img.shields.io/github/v/release/Solierrr/api-auth)](https://github.com/Solierrr/api-auth/releases)
 
-</p>
+Este serviço cuida da entrada das pessoas na plataforma e da continuidade de suas sessões. Ele permite criar uma conta, entrar com senha ou identidade federada, confirmar o endereço de e-mail e recuperar o acesso. Também controla a autorização do aplicativo profissional e a saída de sessões.
 
-<div align="center">
-
-<p>
-  <a href="https://github.com/syvixor/skills-icons">
-    <img src="https://skills.syvixor.com/api/icons?i=kotlin,springboot,spring,postgresql,redis,firebase" height="48" alt="Stack do api-auth">
-  </a>
-</p>
-
-<p>
-
-[![Kotlin](https://img.shields.io/badge/Kotlin-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org/)
-[![Spring Boot](https://img.shields.io/badge/Spring_Boot-6DB33F?logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
-[![Spring Security](https://img.shields.io/badge/Spring_Security-6DB33F?logo=springsecurity&logoColor=white)](https://spring.io/projects/spring-security)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![Redis](https://img.shields.io/badge/Redis-DC382D?logo=redis&logoColor=white)](https://redis.io/)
-[![Firebase](https://img.shields.io/badge/Firebase-FFCA28?logo=firebase&logoColor=black)](https://firebase.google.com/)
-
-</p>
-
-</div>
+A identidade fica no PostgreSQL. O serviço emite JWT com assinatura assimétrica e publica a chave pública para os demais serviços validarem o acesso. Eventos de cadastro passam por Redis até o cadastro de negócio. Mensagens de confirmação e recuperação são solicitadas ao serviço de e-mail, enquanto o Firebase comprova a identidade federada.
 
 ## Aprofunde-se no Projeto!
 
-- [ARCHITECTURE.md](./ARCHITECTURE.md), camadas do serviço, padrão de outbox e árvore real do repositório.
-- [RUNNING.md](./RUNNING.md), como subir o `api-auth` localmente e impedimentos conhecidos.
-- [DEPLOYMENT.md](https://github.com/Solierrr/.github/blob/main/.github/DEPLOYMENT.md), pipeline de deploy padrão da organização (`main`/`qa`, Docker Hub, ArgoCD).
+- [OVERVIEW.md](./docs/OVERVIEW.md), finalidade e regras de produto.
+- [ARCHITECTURE.md](./docs/ARCHITECTURE.md), componentes, dados e integrações.
+- [RUNNING.md](./docs/RUNNING.md), preparação e execução local.
+- [API.md](./docs/API.md), autenticação e uso do contrato.
+- [DEPLOY.md](./docs/DEPLOY.md), ambientes e publicação.
+- [STATUS.md](./docs/STATUS.md), limites observados.
+- [Dados](./database/), modelos e responsabilidades de persistência.
+- [Fluxos](./flows/), etapas e casos de erro do repositório.
+- [PENDENCIAS.md](./PENDENCIAS.md), questões para revisão.
 
 ## Contribuindo
 
-- [CONTRIBUTING.md](https://github.com/Solierrr/.github/blob/main/.github/CONTRIBUTING.md), convenções de commit, branch e Pull Request.
-- [CODE_OF_CONDUCT.md](https://github.com/Solierrr/.github/blob/main/.github/CODE_OF_CONDUCT.md), código de conduta do projeto.
-- [SECURITY.md](https://github.com/Solierrr/.github/blob/main/.github/SECURITY.md), como reportar vulnerabilidades de segurança.
-
-## Recuperação de senha e verificação de e-mail
-
-Rotas públicas, chamadas pelo `web-app`: `POST /auth/password/reset/request` (corpo `{email}`) e `POST /auth/password/reset/confirm` (corpo `{token, password}`). A solicitação responde sempre `202 {"status":"REQUEST_ACCEPTED"}`, exista ou não a conta, e só envia e-mail para conta ativa com senha local. O token tem 32 bytes aleatórios (43 caracteres base64url), só o hash SHA-256 fica em `one_time_token`, vale 30 minutos e é de uso único. Ao redefinir (senha de 12 a 72 bytes), todas as sessões e refresh tokens do usuário são revogados. A verificação de e-mail usa `POST /auth/email/verification/request` (autenticada) e `POST /auth/email/verification/confirm` (`{token}`, público), com token de 24 horas.
-
-O envio passa pelo `api-email` (`POST /emails`, modelos `password-reset` e `email-verification`, cabeçalho `X-API-Key`). Configure `EMAIL_SERVICE_URL` (ou `API_EMAIL_URL`), `EMAIL_SERVICE_API_KEY` (ou `SERVICE_KEY_API_EMAIL`) e os links `AUTH_EMAIL_RESET_URL` e `AUTH_EMAIL_VERIFICATION_URL`, dos quais só a origem é usada: o caminho da página segue o idioma da conta (`pt-BR`, `en-US` ou `es-ES`), e o `token` vai no fim. O idioma é definido no cadastro e muda em `PATCH /auth/me/locale`. A origem desses links precisa estar em `EMAIL_ALLOWED_ORIGINS` do `api-email`. Sem URL ou chave do `api-email`, o serviço sobe normalmente, registra um aviso e as rotas de solicitação respondem `503 EMAIL_NOT_CONFIGURED`; falha do `api-email` responde `503 EMAIL_UNAVAILABLE` e nenhum token é gravado. Erros de token respondem `400 INVALID_OR_EXPIRED_TOKEN` e senha fora da política, `400 PASSWORD_POLICY`.
+- [CONTRIBUTING.md](https://github.com/Solierrr/.github/blob/main/.github/CONTRIBUTING.md), convenções de contribuição.
+- [CODE_OF_CONDUCT.md](https://github.com/Solierrr/.github/blob/main/CODE_OF_CONDUCT.md), código de conduta.
+- [SECURITY.md](https://github.com/Solierrr/.github/blob/main/SECURITY.md), relato de vulnerabilidades.

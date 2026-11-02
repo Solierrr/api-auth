@@ -1,66 +1,18 @@
-# Rodando o Projeto Localmente
-
-Este repositório é Kotlin + Spring Boot, buildado com Maven. O processo local é sempre o mesmo: clonar, abrir na IDE, baixar as dependências via `mvnw` e subir a aplicação. O `api-auth` depende de Postgres e Redis já em pé e, opcionalmente, de credenciais do Firebase — verifique a seção de impedimentos abaixo antes de iniciar.
-
-<p>
-  <a href="https://github.com/syvixor/skills-icons">
-    <img src="https://skills.syvixor.com/api/icons?i=kotlin,springboot,spring,github,postgresql,redis" height="48" alt="Rodando o Projeto — api-auth">
-  </a>
+<p align="center">
+  <img src="../assets/readme/banners/springboot.png" alt="Spring Boot" width="100%">
 </p>
 
-## Possíveis Impedimentos
+# Execução local
 
-- **JDK 21 instalado localmente**, a mesma versão usada no `Dockerfile` do repositório (`eclipse-temurin:21`) — rodar fora do container exige essa versão instalada e configurada como `JAVA_HOME`.
-- **Postgres acessível**, o serviço usa `DB_POSTGRES_HOST`/`DB_POSTGRES_PORT`/`DB_POSTGRES_USER`/`DB_POSTGRES_PASSWORD` contra o banco `authdb` (`DB_POSTGRES_AUTH`), o mesmo host de Postgres compartilhado com o `api-core` — sem ele, o Flyway falha ao migrar o schema no boot.
-- **Redis acessível**, `UPSTASH_CORE_HOST`/`UPSTASH_CORE_PORT` apontam para a mesma instância Upstash usada pelo `api-core`, necessária para a fila de outbox (`OutboxPollingScheduler`, `OutboxDeadLetterReclaimer` e o consumer). Para rodar sem Redis real, defina `OUTBOX_CONSUMER_ENABLED=false` — o polling/publish para a stream ainda depende de uma conexão Redis válida.
-- **Par de chaves RSA (keystore PKCS12)**, `JWT_KEYSTORE_PATH`, `JWT_KEYSTORE_PASSWORD` e `JWT_ACTIVE_KID` precisam apontar para um keystore local válido — sem ele, a aplicação falha ao subir o `JwtKeysConfig` (assinatura dos tokens e endpoint `/.well-known/jwks.json`). {a confirmar: processo/script para gerar o keystore de desenvolvimento local}
-- **Integração com `api-core`**, `SERVICE_KEY_API_AUTH` (pasta `/service-keys` do Infisical) e `PERSISTENCE_BASE_URL` (padrão `http://localhost:8080`) são necessários para o provisionamento de usuário via `CoreUserClient` — sem o `api-core` no ar, ou sem a chave aceita por ele, o fluxo de registro completo não funciona ponta a ponta.
-- **Credenciais do Firebase (opcional)**, o login federado só é ativado com `FIREBASE_ENABLED=true` e `FIREBASE_PROJECT_ID` configurado; com `FIREBASE_ENABLED=false` (padrão), os endpoints `/auth/firebase` e `/auth/firebase/link` ficam indisponíveis, mas o login local continua funcionando normalmente.
-- **Secrets locais**, variáveis de ambiente equivalentes às injetadas em runtime pelo [Infisical](https://infisical.com) precisam ser criadas manualmente em `.env` na raiz do projeto (ver `.env.example` para a lista completa) — sem elas, a aplicação sobe mas falha ao tentar se conectar em dependências externas.
+Use Java 21, Maven Wrapper, PostgreSQL com `pgcrypto` e `citext`, Redis e Infisical CLI autenticado. O guia comum está em [KOTLIN_SPRINGBOOT.md](https://github.com/Solierrr/docs-warehouse/blob/main/readme/running/KOTLIN_SPRINGBOOT.md).
 
-## Instalação do Projeto
+Execute `make vault` para exportar as pastas `/database`, `/redis`, `/auth`, `/outbox`, `/service-keys`, `/otel`, `/fcm` e `/service-urls`, e depois `make install` e `make dev`, com as chaves JWT e os bancos configurados antes de iniciar.
 
-### Iniciando o repositório com o Github
+| Comando | Efeito |
+|---|---|
+| `make test` | Testes Maven |
+| `make lint` | ktlint |
+| `make build` | Empacotamento sem testes |
+| `make openapi` | Exportação pelo teste `OpenApiExportTests` |
 
-<p>
-  <a href="https://github.com/syvixor/skills-icons">
-    <img src="https://skills.syvixor.com/api/icons?i=github,intellij" height="48" alt="Frameworks">
-  </a>
-</p>
-
-Clone o repositório e abra no IntelliJ IDEA — o plugin Kotlin já vem embutido, sem configuração adicional.
-
-```Comandos para clonar o repositório
-git clone https://github.com/Solierrr/api-auth.git
-cd ./api-auth
-idea .
-```
-
-### Instalando dependências necessárias para rodar o projeto localmente
-
-<p>
-  <a href="https://github.com/syvixor/skills-icons">
-    <img src="https://skills.syvixor.com/api/icons?i=maven,apache" height="48" alt="Frameworks">
-  </a>
-</p>
-
-Use sempre o wrapper (`mvnw`/`mvnw.cmd`) em vez de um Maven instalado globalmente, para garantir a mesma versão usada no CI. Antes de rodar, copie `.env.example` para `.env` e preencha as variáveis descritas na seção de impedimentos.
-
-```Comandos para instalação de dependências
-./mvnw dependency:go-offline
-./mvnw spring-boot:run
-```
-
-Por padrão a aplicação sobe em `SERVER_PORT` (padrão `8081`, ver `application.properties`). Com o serviço no ar, o endpoint `GET /.well-known/jwks.json` é um bom smoke test — não depende de banco além do boot da aplicação e confirma que o keystore JWT foi carregado corretamente.
-
-O Swagger fica em `/docs` e o contrato OpenAPI em `/openapi.json` (YAML em `/openapi.json.yaml`); `DOCS_ENABLED=false` desliga os dois, como em PROD. O `openapi.yaml` da raiz é gerado do código com `make openapi` e o CI confere se ele está atualizado. A prontidão do serviço fica em `/actuator/health/readiness` (banco) e a vida do processo em `/actuator/health/liveness`; o envio de e-mail não entra no health.
-
-### Testando os endpoints
-
-<p>
-  <a href="https://github.com/syvixor/skills-icons">
-    <img src="https://skills.syvixor.com/api/icons?i=bruno" height="48" alt="Coleção de testes de API">
-  </a>
-</p>
-
-O repositório inclui uma coleção [Bruno](https://www.usebruno.com/) em `http/` com exemplos para todas as rotas documentadas e requests auxiliares de login no Firebase. Abra essa pasta diretamente no Bruno e selecione o ambiente `local`; preencha tokens e credenciais apenas na configuração local do Bruno, sem salvá-los no repositório.
+A coleção Bruno está em `http/`. Use `/docs` para consultar a API, `/.well-known/jwks.json` para conferir a chave pública e `/actuator/health/readiness` para verificar o banco. As migrations reais ficam em `src/main/resources/db/migration/`. Variáveis de ambiente podem desligar o Flyway, portanto confirme a origem do schema no ambiente antes de executar migrações.
