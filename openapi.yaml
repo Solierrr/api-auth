@@ -13,7 +13,7 @@ info:
     name: CC0-1.0
     url: https://creativecommons.org/publicdomain/zero/1.0/
   title: Solaria — api-auth
-  version: 3.1.0 # x-release-please-version
+  version: 3.2.0 # x-release-please-version
 servers:
 - description: QA
   url: https://api-auth-xw6o.onrender.com
