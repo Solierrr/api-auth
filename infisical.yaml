@@ -1,0 +1,11 @@
+# Pastas consumidas por este repositório no Infisical.
+# Manifesto para documentação e checagem do .env.example; não configura o Render.
+folders:
+  - /database
+  - /redis
+  - /auth
+  - /outbox
+  - /service-keys
+  - /otel
+# Exceções devem representar configurações locais, nunca esconder segredos ausentes.
+ignore: []

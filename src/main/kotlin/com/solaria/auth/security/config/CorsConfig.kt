@@ -18,6 +18,13 @@ class CorsConfig(@Value("\${app.cors.allowed-origins:http://localhost:5173,http:
             allowCredentials = false
             maxAge = 600
         }
-        return UrlBasedCorsConfigurationSource().apply { registerCorsConfiguration("/**", configuration) }
+        val browser = CorsConfiguration(configuration).apply {
+            allowCredentials = true
+            allowedHeaders = listOf("Authorization", "Content-Type", "X-Solaria-Session")
+        }
+        return UrlBasedCorsConfigurationSource().apply {
+            registerCorsConfiguration("/auth/browser/**", browser)
+            registerCorsConfiguration("/**", configuration)
+        }
     }
 }
